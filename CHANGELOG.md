@@ -11,4 +11,4 @@
 - Basic search status and textual result list in the interface.
 
 ### Notes
-- DuckDuckGo and Startpage use undocumented/unstable search interfaces; blocking and markup changes may break them.\n- Openverse remains available in the code but is not used by the default search flow.\n- Visual thumbnails, effective filters and deduplication are not implemented yet.
+- DuckDuckGo and Startpage use undocumented/unstable search interfaces; blocking and markup changes may break them.\n- Openverse remains available in the code but is not used by the default search flow.\n- Added a first visual gallery with downloaded thumbnails, title, provider and dimensions. Up to eight thumbnail requests run concurrently.\n- Failed thumbnail downloads or unsupported image formats are skipped. Filters, deduplication, full-size preview and save/favorite actions remain pending.
