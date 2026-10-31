@@ -16,9 +16,7 @@
 
 ### Changed
 - Wikimedia Commons is the only integrated search provider in the default flow.
-- Removed external browser-search actions; searches are performed inside the application.
-- Removed the paid Brave Search API adapter, API-key handling, dependency, documentation and UI references.
-- Removed the browser-opening dependency and related UI callback.
+- Removed an API-based search adapter that required paid credentials, along with its key handling, dependency, documentation and UI references.
 - Updated provider labels and footer in the Slint interface.
 - Wikimedia Commons API page results are parsed as an ID-keyed object, matching the MediaWiki response format.
 
