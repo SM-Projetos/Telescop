@@ -9,6 +9,11 @@ fn main() -> Result<(), slint::PlatformError> {
         .build()
         .expect("Não foi possível iniciar o runtime assíncrono");
 
+    // Keep the Brave API token out of source files and Git history.
+    let brave_api_key = std::env::var("BRAVE_SEARCH_API_KEY")
+        .ok()
+        .filter(|key| !key.trim().is_empty());
+
     let app = MainWindow::new()?;
     let app_handle = app.as_weak();
     let runtime_handle = runtime.handle().clone();
@@ -22,19 +27,40 @@ fn main() -> Result<(), slint::PlatformError> {
             return;
         };
 
-        app.set_status("Pesquisando no Wikimedia Commons e carregando miniaturas...".into());
+        app.set_status("Pesquisando imagens e carregando miniaturas...".into());
         app.set_results(slint::ModelRc::from(Rc::new(slint::VecModel::from(
             Vec::<GalleryItem>::new(),
         ))));
 
         let app_handle = app.as_weak();
+        let brave_api_key = brave_api_key.clone();
         runtime_handle.spawn(async move {
-            // Use Wikimedia Commons' documented MediaWiki API for the default search.
+            // Brave is the preferred provider when a token is configured.
+            // Wikimedia Commons remains the fallback and requires no API key.
             let mut images = Vec::new();
-            let mut search_errors = Vec::new();
-            match telescop::search::commons::search_images(&query, 30).await {
-                Ok(mut found) => images.append(&mut found),
-                Err(error) => search_errors.push(format!("Wikimedia Commons: {error}")),
+            let mut search_notes = Vec::new();
+
+            if let Some(api_key) = brave_api_key {
+                match telescop::search::brave::search_images(&query, &api_key, 30).await {
+                    Ok(mut found) if !found.is_empty() => images.append(&mut found),
+                    Ok(_) => search_notes.push(
+                        "Brave Search não encontrou imagens; usando Wikimedia Commons.".to_owned()
+                    ),
+                    Err(error) => search_notes.push(format!(
+                        "Brave Search falhou ({error}); usando Wikimedia Commons."
+                    )),
+                }
+            } else {
+                search_notes.push(
+                    "Brave não configurado: defina BRAVE_SEARCH_API_KEY para ativá-lo. Usando Wikimedia Commons.".to_owned()
+                );
+            }
+
+            if images.is_empty() {
+                match telescop::search::commons::search_images(&query, 30).await {
+                    Ok(mut found) => images.append(&mut found),
+                    Err(error) => search_notes.push(format!("Wikimedia Commons: {error}")),
+                }
             }
             let found_count = images.len();
 
@@ -45,7 +71,9 @@ fn main() -> Result<(), slint::PlatformError> {
             {
                 Ok(client) => client,
                 Err(error) => {
-                    let message = format!("Não foi possível preparar o carregamento das miniaturas: {error}");
+                    let message = format!(
+                        "Não foi possível preparar o carregamento das miniaturas: {error}"
+                    );
                     let _ = slint::invoke_from_event_loop(move || {
                         if let Some(app) = app_handle.upgrade() {
                             app.set_status(message.into());
@@ -75,11 +103,17 @@ fn main() -> Result<(), slint::PlatformError> {
 
                     let bytes = match response.bytes().await {
                         Ok(bytes) => bytes,
-                        Err(error) => return Some(Err(format!("{context}: falha ao ler imagem: {error}"))),
+                        Err(error) => {
+                            return Some(Err(format!("{context}: falha ao ler imagem: {error}")));
+                        }
                     };
                     let decoded = match image::load_from_memory(&bytes) {
                         Ok(decoded) => decoded,
-                        Err(error) => return Some(Err(format!("{context}: formato de imagem não suportado: {error}"))),
+                        Err(error) => {
+                            return Some(Err(format!(
+                                "{context}: formato de imagem não suportado: {error}"
+                            )));
+                        }
                     };
 
                     let (original_width, original_height) = (decoded.width(), decoded.height());
@@ -120,17 +154,19 @@ fn main() -> Result<(), slint::PlatformError> {
                 }
 
                 if cards.is_empty() {
-                    let mut details = search_errors;
+                    let mut details = search_notes;
                     details.extend(download_errors.into_iter().take(3));
-                    let message = if found_count == 0 && details.is_empty() {
-                        "Wikimedia Commons não retornou imagens para essa pesquisa.".to_owned()
-                    } else if details.is_empty() {
-                        format!("Wikimedia Commons encontrou {found_count} resultado(s), mas nenhuma miniatura foi carregada.")
+                    let base = if found_count == 0 {
+                        "Nenhum resultado de imagem foi encontrado.".to_owned()
                     } else {
                         format!(
-                            "Wikimedia Commons: {found_count} resultado(s), 0 miniaturas carregadas. {}",
-                            details.join(" | ")
+                            "{found_count} resultado(s) encontrados, mas nenhuma miniatura foi carregada."
                         )
+                    };
+                    let message = if details.is_empty() {
+                        base
+                    } else {
+                        format!("{base} {}", details.join(" | "))
                     };
                     app.set_status(message.into());
                     return;
@@ -157,8 +193,8 @@ fn main() -> Result<(), slint::PlatformError> {
                 ))));
 
                 let failed_count = download_errors.len();
-                let status = if failed_count == 0 {
-                    format!("{loaded_count} imagem(ns) carregada(s) do Wikimedia Commons.")
+                let mut status = if failed_count == 0 {
+                    format!("{loaded_count} imagem(ns) carregada(s) na galeria.")
                 } else {
                     let examples = download_errors.into_iter().take(2).collect::<Vec<_>>();
                     format!(
@@ -166,6 +202,10 @@ fn main() -> Result<(), slint::PlatformError> {
                         examples.join(" | ")
                     )
                 };
+                if !search_notes.is_empty() {
+                    status.push_str(" ");
+                    status.push_str(&search_notes.join(" | "));
+                }
                 app.set_status(status.into());
             });
         });
