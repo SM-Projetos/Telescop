@@ -1,7 +1,7 @@
 use super::ImageResult;
 use scraper::{Html, Selector};
 
-const SEARCH_URL: &str = "https://www.startpage.com/sp/search";
+const SEARCH_URL: &str = "https://www.startpage.com/";
 
 /// Startpage image results are parsed from the image-search HTML page.
 /// The page structure is not a stable public API and may change without notice.
