@@ -2,7 +2,7 @@
 
 Aplicativo desktop nativo para pesquisar imagens em diferentes fontes e reunir os resultados em uma galeria própria.
 
-> **Status:** em desenvolvimento. A fundação Rust + Slint inclui adaptadores experimentais para DuckDuckGo Imagens e Startpage Imagens.
+> **Status:** em desenvolvimento. A pesquisa padrão usa um adaptador experimental do Startpage; DuckDuckGo está temporariamente desativado no fluxo padrão devido a respostas HTTP 403.
 
 ## Tecnologias
 
@@ -43,7 +43,7 @@ cargo check
 
 ## Fontes em avaliação
 
-DuckDuckGo Imagens e Startpage Imagens estão integrados experimentalmente. Openverse permanece em espera; Bing, Brave Search e Wikimedia Commons continuam em avaliação. A seleção final dependerá de qualidade, estabilidade, disponibilidade e condições de uso de cada serviço.
+Startpage Imagens está ativo experimentalmente, usando parsing de HTML não estável. O adaptador DuckDuckGo permanece no código, mas está desativado no fluxo padrão porque o endpoint interno de imagens retornou HTTP 403. Openverse permanece em espera; Bing, Brave Search e Wikimedia Commons continuam em avaliação. A seleção final dependerá de qualidade, estabilidade, disponibilidade e condições de uso de cada serviço.
 
 ## Licença
 
