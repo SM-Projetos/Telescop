@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::collections::HashMap;
 
 use super::ImageResult;
 
@@ -8,12 +9,14 @@ const API_URL: &str = "https://commons.wikimedia.org/w/api.php";
 struct ApiResponse {
     #[serde(default)]
     query: Query,
+    error: Option<ApiError>,
 }
 
 #[derive(Debug, Default, Deserialize)]
 struct Query {
+    // MediaWiki returns query.pages as an object keyed by page ID, not an array.
     #[serde(default)]
-    pages: Vec<Page>,
+    pages: HashMap<String, Page>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -36,15 +39,22 @@ struct ImageInfo {
     descriptionurl: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+struct ApiError {
+    code: String,
+    info: String,
+}
+
 /// Search Wikimedia Commons through its documented MediaWiki API.
 pub async fn search_images(
     query: &str,
     limit: u8,
-) -> Result<Vec<ImageResult>, reqwest::Error> {
+) -> Result<Vec<ImageResult>, Box<dyn std::error::Error + Send + Sync>> {
     let client = reqwest::Client::builder()
-        .user_agent("Telescop/0.1.0 (desktop image search)")
-        .timeout(std::time::Duration::from_secs(15))
+        .user_agent("Telescop/0.1.0 (native desktop image search)")
+        .timeout(std::time::Duration::from_secs(20))
         .build()?;
+    let limit = limit.clamp(1, 50).to_string();
 
     let response = client
         .get(API_URL)
@@ -54,7 +64,7 @@ pub async fn search_images(
             ("generator", "search"),
             ("gsrnamespace", "6"),
             ("gsrsearch", query),
-            ("gsrlimit", &limit.clamp(1, 50).to_string()),
+            ("gsrlimit", limit.as_str()),
             ("prop", "imageinfo"),
             ("iiprop", "url|size"),
             ("iiurlwidth", "640"),
@@ -65,16 +75,29 @@ pub async fn search_images(
         .json::<ApiResponse>()
         .await?;
 
-    Ok(response.query.pages.into_iter().filter_map(|page| {
-        let info = page.imageinfo.into_iter().next()?;
-        Some(ImageResult {
-            image_url: info.url,
-            thumbnail_url: info.thumburl,
-            title: Some(page.title.trim_start_matches("File:").to_owned()),
-            source_page: info.descriptionurl,
-            provider: "Wikimedia Commons".into(),
-            width: info.width,
-            height: info.height,
+    if let Some(error) = response.error {
+        return Err(std::io::Error::other(format!(
+            "Wikimedia Commons API ({}): {}",
+            error.code, error.info
+        )).into());
+    }
+
+    let mut pages = response.query.pages.into_values().collect::<Vec<_>>();
+    pages.sort_by(|a, b| a.title.cmp(&b.title));
+
+    Ok(pages
+        .into_iter()
+        .filter_map(|page| {
+            let info = page.imageinfo.into_iter().next()?;
+            Some(ImageResult {
+                image_url: info.url,
+                thumbnail_url: info.thumburl,
+                title: Some(page.title.trim_start_matches("File:").to_owned()),
+                source_page: info.descriptionurl,
+                provider: "Wikimedia Commons".into(),
+                width: info.width,
+                height: info.height,
+            })
         })
-    }).collect())
+        .collect())
 }
