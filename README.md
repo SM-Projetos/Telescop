@@ -2,7 +2,7 @@
 
 Aplicativo desktop nativo para pesquisar imagens em diferentes fontes e reunir os resultados em uma galeria própria.
 
-> **Status:** em desenvolvimento. A pesquisa padrão usa um adaptador experimental do Startpage; DuckDuckGo está temporariamente desativado no fluxo padrão devido a respostas HTTP 403.
+> **Status:** em desenvolvimento. A pesquisa padrão utiliza a API documentada do Wikimedia Commons. DuckDuckGo e Startpage permanecem como adaptadores experimentais e não participam do fluxo padrão.
 
 ## Tecnologias
 
@@ -10,14 +10,25 @@ Aplicativo desktop nativo para pesquisar imagens em diferentes fontes e reunir o
 - **Slint** — interface gráfica desktop nativa.
 - **Reqwest + Rustls** — requisições HTTP assíncronas com TLS.
 - **Serde** — desserialização das respostas JSON.
+- **MediaWiki API** — pesquisa de arquivos no Wikimedia Commons.
 
 O projeto não utiliza Tauri, Electron, WebView, HTML, CSS ou TypeScript.
 
-## Pesquisa experimental
+## Pesquisa e galeria
 
-O primeiro adaptador consulta a API pública de imagens do Openverse. A pesquisa é executada de forma assíncrona para não bloquear a interface e os resultados são convertidos para o modelo comum `ImageResult`.
+A pesquisa padrão utiliza a API do Wikimedia Commons para localizar arquivos e solicitar miniaturas. Os resultados são convertidos para o modelo comum `ImageResult` e as miniaturas são baixadas em paralelo, com limite de oito requisições simultâneas.
 
-A integração inicial exibe título, dimensões disponíveis e provedor. A exibição das miniaturas, filtros efetivos e deduplicação serão implementados nas próximas etapas. A disponibilidade e os limites da API dependem do serviço externo.
+Falhas individuais de download ou decodificação não interrompem toda a pesquisa. O status apresenta a quantidade de resultados, miniaturas carregadas e exemplos de falhas para facilitar o diagnóstico.
+
+A disponibilidade da API e dos arquivos depende do serviço externo. O Wikimedia Commons contém apenas conteúdo disponibilizado sob suas políticas de licenciamento; verifique a licença e as condições de cada arquivo antes de reutilizá-lo.
+
+## Adaptadores experimentais
+
+- **DuckDuckGo Imagens:** mantido no código, mas desativado no fluxo padrão porque o endpoint interno utilizado retornou HTTP 403.
+- **Startpage Imagens:** mantido no código; depende da estrutura HTML do site, que não é uma API pública estável.
+- **Openverse:** mantido no código, mas fora do fluxo padrão.
+
+Esses adaptadores poderão ser reavaliados quando houver uma integração confiável e compatível com as condições dos respectivos serviços.
 
 ## Desenvolvimento
 
@@ -40,10 +51,6 @@ cargo check
 - `ui/` — interface Slint.
 - `docs/ARCHITECTURE.md` — arquitetura e etapas planejadas.
 - `CHANGELOG.md` — histórico de alterações.
-
-## Fontes em avaliação
-
-Startpage Imagens está ativo experimentalmente, usando parsing de HTML não estável. O adaptador DuckDuckGo permanece no código, mas está desativado no fluxo padrão porque o endpoint interno de imagens retornou HTTP 403. Openverse permanece em espera; Bing, Brave Search e Wikimedia Commons continuam em avaliação. A seleção final dependerá de qualidade, estabilidade, disponibilidade e condições de uso de cada serviço.
 
 ## Licença
 
