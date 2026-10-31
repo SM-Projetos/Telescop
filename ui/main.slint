@@ -40,9 +40,9 @@ export component MainWindow inherits Window {
             spacing: 18px;
             alignment: center;
             CheckBox { text: "Bing"; checked: false; }
-            CheckBox { text: "DuckDuckGo"; checked: false; }
+            CheckBox { text: "DuckDuckGo"; checked: true; }
             CheckBox { text: "Brave"; checked: false; }
-            CheckBox { text: "Openverse"; checked: true; }
+            CheckBox { text: "Startpage"; checked: true; }
             CheckBox { text: "Wikimedia"; checked: false; }
         }
 
@@ -105,7 +105,7 @@ export component MainWindow inherits Window {
         }
 
         HorizontalLayout {
-            Text { text: "Telescop • Busca experimental Openverse"; color: #737d91; font-size: 11px; }
+            Text { text: "Telescop • DuckDuckGo + Startpage"; color: #737d91; font-size: 11px; }
             Rectangle { background: transparent; }
             Text { text: "Rust + Slint"; color: #737d91; font-size: 11px; }
         }
