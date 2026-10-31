@@ -85,39 +85,46 @@ pub async fn search_images(
     Ok(response
         .results
         .into_iter()
-        .filter_map(|item| {
-            let thumbnail = item.thumbnail?;
-            let thumbnail_url = thumbnail.src?;
-            let image_url = item
-                .properties
-                .as_ref()
-                .and_then(|properties| properties.url.clone())
-                .unwrap_or_else(|| thumbnail_url.clone());
-            let properties = item.properties;
-
-            Some(ImageResult {
-                image_url,
-                thumbnail_url: Some(
-                    properties
-                        .as_ref()
-                        .and_then(|properties| properties.placeholder.clone())
-                        .unwrap_or(thumbnail_url),
-                ),
-                title: item.title,
-                source_page: item.url,
-                provider: "Brave Search".into(),
-                width: properties
-                    .as_ref()
-                    .and_then(|properties| properties.width)
-                    .or(thumbnail.width),
-                height: properties
-                    .as_ref()
-                    .and_then(|properties| properties.height)
-                    .or(thumbnail.height),
-            })
-        })
+        .filter_map(to_image_result)
         .take(limit.clamp(1, 200) as usize)
         .collect())
+}
+
+fn to_image_result(item: ApiImage) -> Option<ImageResult> {
+    let thumbnail = item.thumbnail;
+    let properties = item.properties;
+
+    let thumbnail_url = thumbnail
+        .as_ref()
+        .and_then(|thumbnail| thumbnail.src.clone())
+        .or_else(|| {
+            properties
+                .as_ref()
+                .and_then(|properties| properties.placeholder.clone())
+        });
+
+    // Some valid results include an original image URL but no thumbnail.
+    // The caller can then download the original URL and generate a local preview.
+    let image_url = properties
+        .as_ref()
+        .and_then(|properties| properties.url.clone())
+        .or_else(|| thumbnail_url.clone())?;
+
+    Some(ImageResult {
+        image_url,
+        thumbnail_url,
+        title: item.title,
+        source_page: item.url,
+        provider: "Brave Search".into(),
+        width: properties
+            .as_ref()
+            .and_then(|properties| properties.width)
+            .or_else(|| thumbnail.as_ref().and_then(|thumbnail| thumbnail.width)),
+        height: properties
+            .as_ref()
+            .and_then(|properties| properties.height)
+            .or_else(|| thumbnail.as_ref().and_then(|thumbnail| thumbnail.height)),
+    })
 }
 
 #[cfg(test)]
@@ -144,12 +151,31 @@ mod tests {
         }"#;
 
         let parsed: ApiResponse = serde_json::from_str(payload).unwrap();
-        assert_eq!(parsed.results.len(), 1);
-        let item = parsed.results.into_iter().next().unwrap();
-        assert_eq!(item.url.as_deref(), Some("https://example.com/page"));
+        let result = to_image_result(parsed.results.into_iter().next().unwrap()).unwrap();
+        assert_eq!(result.image_url, "https://example.com/original.jpg");
         assert_eq!(
-            item.properties.as_ref().and_then(|properties| properties.width),
-            Some(1920)
+            result.thumbnail_url.as_deref(),
+            Some("https://example.com/thumb.jpg")
         );
+        assert_eq!(result.width, Some(1920));
+        assert_eq!(result.height, Some(1200));
+    }
+
+    #[test]
+    fn keeps_results_that_only_have_an_original_image_url() {
+        let payload = r#"{
+            "results": [{
+                "properties": {
+                    "url": "https://example.com/original.jpg",
+                    "width": 800,
+                    "height": 600
+                }
+            }]
+        }"#;
+
+        let parsed: ApiResponse = serde_json::from_str(payload).unwrap();
+        let result = to_image_result(parsed.results.into_iter().next().unwrap()).unwrap();
+        assert_eq!(result.image_url, "https://example.com/original.jpg");
+        assert_eq!(result.thumbnail_url, None);
     }
 }
