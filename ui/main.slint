@@ -1,4 +1,4 @@
-import { Button, CheckBox, ComboBox, LineEdit, ListView, TextEdit } from "std-widgets.slint";
+import { Button, ComboBox, LineEdit, ListView, TextEdit } from "std-widgets.slint";
 
 export struct GalleryItem {
     thumbnail: image,
@@ -14,6 +14,7 @@ export component MainWindow inherits Window {
     background: #0d0f14;
 
     callback search_requested(string);
+    callback open_bing_requested(string);
     in-out property <string> search_query: "";
     in-out property <string> status: "Pronto para pesquisar.";
     in-out property <[GalleryItem]> results: [];
@@ -41,14 +42,17 @@ export component MainWindow inherits Window {
                 text: "Pesquisar";
                 clicked => { root.search_requested(root.search_query); }
             }
+            Button {
+                text: "Abrir Bing Imagens";
+                clicked => { root.open_bing_requested(root.search_query); }
+            }
         }
 
         HorizontalLayout {
             spacing: 18px;
             alignment: center;
-            Text { text: "Brave Search API"; color: #22d3ee; }
-            Text { text: "Wikimedia Commons (alternativa)"; color: #22d3ee; }
-            Text { text: "DuckDuckGo / Startpage: experimentais"; color: #737d91; }
+            Text { text: "Wikimedia Commons • pesquisa integrada"; color: #22d3ee; }
+            Text { text: "Bing Imagens • abre no navegador"; color: #a1a8b8; }
         }
 
         HorizontalLayout {
@@ -135,7 +139,7 @@ export component MainWindow inherits Window {
         }
 
         HorizontalLayout {
-            Text { text: "Telescop • Brave Search + Wikimedia Commons"; color: #737d91; font-size: 11px; }
+            Text { text: "Telescop • Wikimedia Commons + Bing Imagens"; color: #737d91; font-size: 11px; }
             Rectangle { background: transparent; }
             Text { text: "Rust + Slint"; color: #737d91; font-size: 11px; }
         }
