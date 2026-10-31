@@ -51,7 +51,7 @@ pub async fn search_images(
     limit: u8,
 ) -> Result<Vec<ImageResult>, Box<dyn std::error::Error + Send + Sync>> {
     let client = reqwest::Client::builder()
-        .user_agent("Telescop/0.1.0 (native desktop image search)")
+        .user_agent("Telescop/0.1.0 (https://github.com/SM-Projetos/Telescop)")
         .timeout(std::time::Duration::from_secs(20))
         .build()?;
     let limit = limit.clamp(1, 50).to_string();
