@@ -11,7 +11,7 @@
 - Experimental Startpage Images adapter parsing the image-search HTML page.
 - Wikimedia Commons search adapter using the documented MediaWiki API.
 - Visual gallery with downloaded thumbnails, title, provider and dimensions.
-- Concurrent thumbnail downloads, limited to eight requests at a time.
+- Concurrent thumbnail downloads, limited to three requests at a time, following Wikimedia usage guidance.
 - Search status with counts and details for thumbnail download or decoding failures.
 
 ### Changed
