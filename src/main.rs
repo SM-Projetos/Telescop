@@ -15,90 +15,156 @@ fn main() -> Result<(), slint::PlatformError> {
 
     app.on_search_requested(move |query| {
         let query = query.trim().to_owned();
-        if query.is_empty() { return; }
-        let Some(app) = app_handle.upgrade() else { return };
+        if query.is_empty() {
+            return;
+        }
+        let Some(app) = app_handle.upgrade() else {
+            return;
+        };
 
-        app.set_status("Pesquisando imagens e carregando miniaturas...".into());
+        app.set_status("Pesquisando no Wikimedia Commons e carregando miniaturas...".into());
         app.set_results(slint::ModelRc::from(Rc::new(slint::VecModel::from(
             Vec::<GalleryItem>::new(),
         ))));
 
         let app_handle = app.as_weak();
         runtime_handle.spawn(async move {
-            // DuckDuckGo's undocumented image endpoint currently returns HTTP 403.
-            // Keep it out of the default flow until a reliable integration is available.
+            // Use Wikimedia Commons' documented MediaWiki API for the default search.
             let mut images = Vec::new();
-            let mut errors = Vec::new();
-            match telescop::search::startpage::search_images(&query, 30).await {
+            let mut search_errors = Vec::new();
+            match telescop::search::commons::search_images(&query, 30).await {
                 Ok(mut found) => images.append(&mut found),
-                Err(error) => errors.push(format!("Startpage: {error}")),
+                Err(error) => search_errors.push(format!("Wikimedia Commons: {error}")),
             }
+            let found_count = images.len();
 
             let client = match reqwest::Client::builder()
-                .user_agent("Telescop/0.1.0")
-                .timeout(std::time::Duration::from_secs(15))
-                .build() {
+                .user_agent("Telescop/0.1.0 (native desktop image search)")
+                .timeout(std::time::Duration::from_secs(20))
+                .build()
+            {
                 Ok(client) => client,
                 Err(error) => {
                     let message = format!("Não foi possível preparar o carregamento das miniaturas: {error}");
                     let _ = slint::invoke_from_event_loop(move || {
-                        if let Some(app) = app_handle.upgrade() { app.set_status(message.into()); }
+                        if let Some(app) = app_handle.upgrade() {
+                            app.set_status(message.into());
+                        }
                     });
                     return;
                 }
             };
 
-            let cards = stream::iter(images.into_iter().map(|item| {
+            let download_results = stream::iter(images.into_iter().map(|item| {
                 let client = client.clone();
                 async move {
-                    let url = item.thumbnail_url.as_deref().unwrap_or(&item.image_url);
-                    let response = client.get(url).send().await.ok()?.error_for_status().ok()?;
-                    let bytes = response.bytes().await.ok()?;
-                    let decoded = image::load_from_memory(&bytes).ok()?;
-                    let (width, height) = (decoded.width(), decoded.height());
+                    let title = item.title.unwrap_or_else(|| "Imagem sem título".into());
+                    let provider = item.provider;
+                    let context = format!("{provider}: {title}");
+                    let url = item.thumbnail_url.as_deref()
+                        .unwrap_or(&item.image_url)
+                        .to_owned();
+
+                    let response = match client.get(&url).send().await {
+                        Ok(response) => response,
+                        Err(error) => return Some(Err(format!("{context}: {error}"))),
+                    };
+                    if !response.status().is_success() {
+                        return Some(Err(format!("{context}: HTTP {}", response.status())));
+                    }
+
+                    let bytes = match response.bytes().await {
+                        Ok(bytes) => bytes,
+                        Err(error) => return Some(Err(format!("{context}: falha ao ler imagem: {error}"))),
+                    };
+                    let decoded = match image::load_from_memory(&bytes) {
+                        Ok(decoded) => decoded,
+                        Err(error) => return Some(Err(format!("{context}: formato de imagem não suportado: {error}"))),
+                    };
+
+                    let (original_width, original_height) = (decoded.width(), decoded.height());
                     let thumbnail = decoded.thumbnail(320, 220).to_rgba8();
                     let (thumb_width, thumb_height) = thumbnail.dimensions();
                     let dimensions = match (item.width, item.height) {
-                        (Some(w), Some(h)) => format!("{w} × {h}"),
-                        _ if width > 0 && height > 0 => format!("{width} × {height}"),
-                        _ => String::new(),
+                        (Some(width), Some(height)) => format!("{width} × {height}"),
+                        _ => format!("{original_width} × {original_height}"),
                     };
-                    Some((
+
+                    Some(Ok((
                         thumbnail.into_raw(),
                         thumb_width,
                         thumb_height,
-                        item.title.unwrap_or_else(|| "Imagem sem título".into()),
-                        item.provider,
+                        title,
+                        provider,
                         dimensions,
-                    ))
+                    )))
                 }
-            })).buffer_unordered(8).filter_map(|card| async move { card }).collect::<Vec<_>>().await;
+            }))
+            .buffer_unordered(8)
+            .filter_map(|result| async move { result })
+            .collect::<Vec<_>>()
+            .await;
 
             let _ = slint::invoke_from_event_loop(move || {
-                let Some(app) = app_handle.upgrade() else { return };
+                let Some(app) = app_handle.upgrade() else {
+                    return;
+                };
+
+                let mut cards = Vec::new();
+                let mut download_errors = Vec::new();
+                for result in download_results {
+                    match result {
+                        Ok(card) => cards.push(card),
+                        Err(error) => download_errors.push(error),
+                    }
+                }
+
                 if cards.is_empty() {
-                    let detail = if errors.is_empty() {
-                        "Nenhuma miniatura pôde ser carregada. Os provedores podem ter bloqueado as imagens.".to_owned()
-                    } else { errors.join(" | ") };
-                    app.set_status(format!("Pesquisa concluída sem miniaturas: {detail}").into());
+                    let mut details = search_errors;
+                    details.extend(download_errors.into_iter().take(3));
+                    let message = if found_count == 0 && details.is_empty() {
+                        "Wikimedia Commons não retornou imagens para essa pesquisa.".to_owned()
+                    } else if details.is_empty() {
+                        format!("Wikimedia Commons encontrou {found_count} resultado(s), mas nenhuma miniatura foi carregada.")
+                    } else {
+                        format!(
+                            "Wikimedia Commons: {found_count} resultado(s), 0 miniaturas carregadas. {}",
+                            details.join(" | ")
+                        )
+                    };
+                    app.set_status(message.into());
                     return;
                 }
 
-                let gallery_items = cards.into_iter().map(|(pixels, width, height, title, provider, dimensions)| {
-                    let buffer = slint::SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(&pixels, width, height);
-                    GalleryItem {
-                        thumbnail: slint::Image::from_rgba8(buffer),
-                        title: title.into(),
-                        provider: provider.into(),
-                        dimensions: dimensions.into(),
-                    }
-                }).collect::<Vec<_>>();
-                let count = gallery_items.len();
-                app.set_results(slint::ModelRc::from(Rc::new(slint::VecModel::from(gallery_items))));
-                let status = if errors.is_empty() {
-                    format!("{count} imagem(ns) carregada(s) na galeria.")
+                let gallery_items = cards
+                    .into_iter()
+                    .map(|(pixels, width, height, title, provider, dimensions)| {
+                        let buffer = slint::SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(
+                            &pixels, width, height,
+                        );
+                        GalleryItem {
+                            thumbnail: slint::Image::from_rgba8(buffer),
+                            title: title.into(),
+                            provider: provider.into(),
+                            dimensions: dimensions.into(),
+                        }
+                    })
+                    .collect::<Vec<_>>();
+
+                let loaded_count = gallery_items.len();
+                app.set_results(slint::ModelRc::from(Rc::new(slint::VecModel::from(
+                    gallery_items,
+                ))));
+
+                let failed_count = download_errors.len();
+                let status = if failed_count == 0 {
+                    format!("{loaded_count} imagem(ns) carregada(s) do Wikimedia Commons.")
                 } else {
-                    format!("{count} imagem(ns) carregada(s). Falhas: {}", errors.join(" | "))
+                    let examples = download_errors.into_iter().take(2).collect::<Vec<_>>();
+                    format!(
+                        "{loaded_count} de {found_count} miniatura(s) carregada(s); {failed_count} falha(s). {}",
+                        examples.join(" | ")
+                    )
                 };
                 app.set_status(status.into());
             });
