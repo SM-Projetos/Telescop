@@ -23,7 +23,7 @@ Falhas individuais de download ou decodificação não interrompem toda a pesqui
 ## Fontes avaliadas
 
 - **Wikimedia Commons:** fonte integrada, através da API oficial do MediaWiki.
-- **Yandex Images:** possui uma API oficial, mas a pesquisa de imagens é tarifada. A documentação oficial informa cobrança de 915 rublos por mil consultas; por isso, não será integrada ao Telescop enquanto o projeto mantiver o requisito de usar apenas serviços gratuitos.
+- **Yandex Images:** possui API oficial, mas não é gratuita. A tabela oficial de preços cobra US$ 7,4999988 por mil consultas de imagens para clientes faturados em dólar (a moeda e os valores podem variar conforme a entidade contratante). Além disso, o acordo de uso do Yandex reserva à empresa o direito de restringir requisições automatizadas. Por isso, não será integrada ao Telescop enquanto o projeto mantiver o requisito de usar apenas serviços gratuitos.
 - **DuckDuckGo e Startpage:** adaptadores experimentais preservados no código, mas desativados no fluxo padrão. O endpoint interno do DuckDuckGo retornou HTTP 403, e o parser HTML do Startpage depende de uma estrutura que pode mudar.
 - **Openverse:** adaptador preservado no código, mas fora do fluxo padrão.
 
