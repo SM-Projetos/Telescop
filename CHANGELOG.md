@@ -17,7 +17,6 @@
 
 ### Changed
 - Wikimedia Commons is the only integrated search provider in the default flow.
-- Removed the Brave Search API adapter, API-key handling, documentation and UI references.
 - Bing Images is offered as an external browser search, not as an internal result provider.
 - Updated provider labels and footer in the Slint interface.
 - Wikimedia Commons API page results are parsed as an ID-keyed object, matching the MediaWiki response format.
