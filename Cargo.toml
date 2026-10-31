@@ -10,6 +10,7 @@ repository = "https://github.com/SM-Projetos/Telescop"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
 scraper = "0.22"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp", "gif"] }
 slint = "1.14"
 tokio = { version = "1", features = ["rt-multi-thread", "time", "macros"] }
 
