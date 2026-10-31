@@ -7,8 +7,20 @@
 - First native desktop interface draft.
 - Normalized image result model.
 - Initial architecture documentation.
-- Experimental DuckDuckGo Images adapter using the session VQD token and JSON endpoint.\n- Experimental Startpage Images adapter parsing the image-search HTML page.\n- Concurrent searches across DuckDuckGo and Startpage.
-- Basic search status and textual result list in the interface.
+- Experimental DuckDuckGo Images adapter using a session VQD token and JSON endpoint.
+- Experimental Startpage Images adapter parsing the image-search HTML page.
+- Wikimedia Commons search adapter using the documented MediaWiki API.
+- Visual gallery with downloaded thumbnails, title, provider and dimensions.
+- Concurrent thumbnail downloads, limited to eight requests at a time.
+- Search status with counts and details for thumbnail download or decoding failures.
+
+### Changed
+- Wikimedia Commons is now the default image search provider.
+- DuckDuckGo and Startpage remain in the code but are disabled in the default search flow.
+- Wikimedia Commons API page results are parsed as an ID-keyed object, matching the MediaWiki response format.
 
 ### Notes
-- DuckDuckGo and Startpage use undocumented/unstable search interfaces; blocking and markup changes may break them.\n- Openverse remains available in the code but is not used by the default search flow.\n- Added a first visual gallery with downloaded thumbnails, title, provider and dimensions. Up to eight thumbnail requests run concurrently.\n- Failed thumbnail downloads or unsupported image formats are skipped. Filters, deduplication, full-size preview and save/favorite actions remain pending.
+- DuckDuckGo's undocumented image endpoint returned HTTP 403 and is not used by default.
+- Startpage's HTML structure is not a stable public API and may change without notice.
+- Openverse remains available in the code but is not used by the default search flow.
+- Filters, deduplication, full-size preview, download and favorite actions remain pending.
