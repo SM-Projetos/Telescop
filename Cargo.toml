@@ -1,0 +1,18 @@
+[package]
+name = "telescop"
+version = "0.1.0"
+edition = "2024"
+description = "Native desktop image search application"
+license = "MIT"
+repository = "https://github.com/SM-Projetos/Telescop"
+
+[dependencies]
+slint = "1.14"
+
+[build-dependencies]
+slint-build = "1.14"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
