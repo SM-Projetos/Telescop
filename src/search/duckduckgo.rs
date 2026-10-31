@@ -16,14 +16,14 @@ struct Item {
     height: Option<u32>,
 }
 
-pub async fn search_images(query: &str, limit: u8) -> Result<Vec<ImageResult>, reqwest::Error> {
+pub async fn search_images(query: &str, limit: u8) -> Result<Vec<ImageResult>, Box<dyn std::error::Error + Send + Sync>> {
     let client = reqwest::Client::builder()
         .user_agent("Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0")
         .build()?;
     let page = client.get(PAGE_URL).query(&[("q", query), ("iax", "images"), ("ia", "images")])
         .send().await?.error_for_status()?.text().await?;
-    let token = extract_vqd(&page).ok_or_else(|| reqwest::Error::from(
-        reqwest::StatusCode::BAD_GATEWAY.into()
+    let token = extract_vqd(&page).ok_or_else(|| std::io::Error::new(
+        std::io::ErrorKind::InvalidData, "DuckDuckGo não forneceu o token de sessão VQD"
     ))?;
     let response = client.get(IMAGE_URL)
         .query(&[("q", query), ("o", "json"), ("l", "wt-wt"), ("vqd", token.as_str()), ("f", ",,,,,")])
