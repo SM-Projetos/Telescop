@@ -1,5 +1,12 @@
 import { Button, CheckBox, ComboBox, LineEdit, ListView, TextEdit } from "std-widgets.slint";
 
+export struct GalleryItem {
+    thumbnail: image,
+    title: string,
+    provider: string,
+    dimensions: string,
+}
+
 export component MainWindow inherits Window {
     title: "Telescop";
     width: 1120px;
@@ -9,7 +16,7 @@ export component MainWindow inherits Window {
     callback search_requested(string);
     in-out property <string> search_query: "";
     in-out property <string> status: "Pronto para pesquisar.";
-    in-out property <[string]> results: [];
+    in-out property <[GalleryItem]> results: [];
 
     VerticalLayout {
         padding: 20px;
@@ -58,7 +65,7 @@ export component MainWindow inherits Window {
         }
 
         Rectangle {
-            height: 76px;
+            height: 64px;
             background: #11141c;
             border-radius: 8px;
             border-width: 1px;
@@ -84,7 +91,7 @@ export component MainWindow inherits Window {
             vertical-stretch: 1;
 
             if root.results.length == 0 : Text {
-                text: "Os resultados da pesquisa aparecerão aqui.";
+                text: "Os resultados com miniaturas aparecerão aqui.";
                 color: #a1a8b8;
                 horizontal-alignment: center;
                 vertical-alignment: center;
@@ -93,13 +100,38 @@ export component MainWindow inherits Window {
             ListView {
                 width: parent.width;
                 height: parent.height;
-                for result in root.results: Text {
-                    text: result;
-                    color: #f3f4f8;
-                    font-size: 13px;
-                    vertical-alignment: center;
-                    height: 36px;
-                    x: 16px;
+                for result in root.results: Rectangle {
+                    width: parent.width - 24px;
+                    height: 184px;
+                    x: 12px;
+                    y: 8px;
+                    background: #1d2230;
+                    border-radius: 10px;
+                    clip: true;
+
+                    HorizontalLayout {
+                        padding: 10px;
+                        spacing: 14px;
+                        Image {
+                            source: result.thumbnail;
+                            image-fit: contain;
+                            width: 220px;
+                            height: 160px;
+                        }
+                        VerticalLayout {
+                            alignment: center;
+                            spacing: 8px;
+                            Text {
+                                text: result.title;
+                                color: #f3f4f8;
+                                font-size: 14px;
+                                font-weight: 600;
+                                wrap: word-wrap;
+                            }
+                            Text { text: result.provider; color: #22d3ee; font-size: 12px; }
+                            Text { text: result.dimensions; color: #a1a8b8; font-size: 11px; }
+                        }
+                    }
                 }
             }
         }
