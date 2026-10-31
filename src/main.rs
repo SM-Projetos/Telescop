@@ -14,51 +14,59 @@ fn main() -> Result<(), slint::PlatformError> {
 
     app.on_search_requested(move |query| {
         let query = query.trim().to_owned();
-        if query.is_empty() {
-            return;
-        }
+        if query.is_empty() { return; }
+        let Some(app) = app_handle.upgrade() else { return };
 
-        let Some(app) = app_handle.upgrade() else {
-            return;
-        };
-
-        app.set_status("Pesquisando no Openverse...".into());
+        app.set_status("Pesquisando no DuckDuckGo e no Startpage...".into());
         app.set_results(slint::ModelRc::from(Rc::new(slint::VecModel::from(
             Vec::<slint::SharedString>::new(),
         ))));
 
         let app_handle = app.as_weak();
         runtime_handle.spawn(async move {
-            let result = telescop::search::openverse::search_images(&query, 30).await;
+            let (ddg, startpage) = tokio::join!(
+                telescop::search::duckduckgo::search_images(&query, 30),
+                telescop::search::startpage::search_images(&query, 30)
+            );
+
+            let mut images = Vec::new();
+            let mut errors = Vec::new();
+            match ddg {
+                Ok(mut found) => images.append(&mut found),
+                Err(error) => errors.push(format!("DuckDuckGo: {error}")),
+            }
+            match startpage {
+                Ok(mut found) => images.append(&mut found),
+                Err(error) => errors.push(format!("Startpage: {error}")),
+            }
 
             let _ = slint::invoke_from_event_loop(move || {
-                let Some(app) = app_handle.upgrade() else {
+                let Some(app) = app_handle.upgrade() else { return };
+                if images.is_empty() {
+                    let detail = if errors.is_empty() {
+                        "Nenhuma imagem encontrada.".to_owned()
+                    } else { errors.join(" | ") };
+                    app.set_status(format!("Falha na pesquisa: {detail}").into());
                     return;
-                };
-
-                match result {
-                    Ok(images) => {
-                        let titles = images
-                            .iter()
-                            .map(|image| {
-                                let title = image.title.as_deref().unwrap_or("Imagem sem título");
-                                let dimensions = match (image.width, image.height) {
-                                    (Some(width), Some(height)) => format!(" • {width} × {height}"),
-                                    _ => String::new(),
-                                };
-                                format!("{title}{dimensions} • Openverse")
-                            })
-                            .map(slint::SharedString::from)
-                            .collect::<Vec<_>>();
-
-                        let count = titles.len();
-                        app.set_results(slint::ModelRc::from(Rc::new(slint::VecModel::from(titles))));
-                        app.set_status(format!("{count} resultado(s) encontrado(s) no Openverse.").into());
-                    }
-                    Err(error) => {
-                        app.set_status(format!("Falha na pesquisa: {error}").into());
-                    }
                 }
+
+                let results = images.iter().map(|image| {
+                    let title = image.title.as_deref().unwrap_or("Imagem sem título");
+                    let dimensions = match (image.width, image.height) {
+                        (Some(w), Some(h)) => format!(" • {w} × {h}"),
+                        _ => String::new(),
+                    };
+                    format!("{title}{dimensions} • {}", image.provider)
+                }).map(slint::SharedString::from).collect::<Vec<_>>();
+
+                let count = results.len();
+                app.set_results(slint::ModelRc::from(Rc::new(slint::VecModel::from(results))));
+                let status = if errors.is_empty() {
+                    format!("{count} resultado(s) encontrado(s).")
+                } else {
+                    format!("{count} resultado(s); alguns provedores falharam: {}", errors.join(" | "))
+                };
+                app.set_status(status.into());
             });
         });
     });
