@@ -100,7 +100,7 @@ fn main() -> Result<(), slint::PlatformError> {
                     )))
                 }
             }))
-            .buffer_unordered(8)
+            .buffer_unordered(3)
             .filter_map(|result| async move { result })
             .collect::<Vec<_>>()
             .await;
