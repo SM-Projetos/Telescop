@@ -29,17 +29,21 @@ Falhas individuais de download ou decodificação não interrompem toda a pesqui
 2. Gere uma chave de API no painel.
 3. Defina a variável de ambiente antes de iniciar o aplicativo.
 
-No Fish:
+No Fish, leia a chave sem exibi-la nem colocá-la diretamente no comando:
 
 ```fish
-set -x BRAVE_SEARCH_API_KEY "SUA_CHAVE_AQUI"
+read --silent --prompt-str="Chave da API Brave: " BRAVE_SEARCH_API_KEY
+echo
+set -x BRAVE_SEARCH_API_KEY $BRAVE_SEARCH_API_KEY
 cargo run
 ```
 
 No Bash:
 
 ```bash
-export BRAVE_SEARCH_API_KEY="SUA_CHAVE_AQUI"
+read -s -p "Chave da API Brave: " BRAVE_SEARCH_API_KEY
+printf '\\n'
+export BRAVE_SEARCH_API_KEY
 cargo run
 ```
 
