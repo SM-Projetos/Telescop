@@ -27,7 +27,7 @@ Todos os provedores deverão produzir um `ImageResult` comum, contendo URL da im
 
 Cada fonte será isolada em um adaptador independente. O núcleo deverá coordenar consultas, receber resultados progressivamente, normalizar dados e remover duplicatas.
 
-Wikimedia Commons é a fonte padrão e utiliza a API documentada do MediaWiki para pesquisar arquivos e solicitar URLs de miniaturas. A resposta da API é normalizada para `ImageResult`; os downloads das miniaturas ocorrem em paralelo, com limite de oito operações. Falhas de rede, status HTTP e formatos não suportados devem ser informadas no status da aplicação. DuckDuckGo e Startpage permanecem como adaptadores experimentais fora do fluxo padrão: o endpoint interno do DuckDuckGo retornou HTTP 403, e o parser HTML do Startpage depende de uma estrutura que pode mudar. Openverse permanece implementado, mas fora do fluxo padrão até resolver a autenticação. Não presumir que scraping seja permitido ou sustentável.
+Wikimedia Commons é a fonte padrão e utiliza a API documentada do MediaWiki para pesquisar arquivos e solicitar URLs de miniaturas. A resposta da API é normalizada para `ImageResult`; os downloads das miniaturas ocorrem em paralelo, com limite de três operações simultâneas, em linha com a orientação de uso da Wikimedia. Falhas de rede, status HTTP e formatos não suportados devem ser informadas no status da aplicação. DuckDuckGo e Startpage permanecem como adaptadores experimentais fora do fluxo padrão: o endpoint interno do DuckDuckGo retornou HTTP 403, e o parser HTML do Startpage depende de uma estrutura que pode mudar. Openverse permanece implementado, mas fora do fluxo padrão até resolver a autenticação. Não presumir que scraping seja permitido ou sustentável.
 
 ## Privacidade
 
