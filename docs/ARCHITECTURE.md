@@ -27,7 +27,7 @@ Todos os provedores deverão produzir um `ImageResult` comum, contendo URL da im
 
 Cada fonte será isolada em um adaptador independente. O núcleo deverá coordenar consultas, receber resultados progressivamente, normalizar dados e remover duplicatas.
 
-Fontes candidatas para avaliação: Bing, DuckDuckGo, Brave Search, Startpage, Openverse e Wikimedia Commons. A inclusão definitiva dependerá de testes de qualidade, estabilidade, disponibilidade e condições de uso. Não presumir que scraping seja permitido ou sustentável.
+DuckDuckGo Imagens e Startpage Imagens possuem adaptadores experimentais baseados em consulta HTTP às páginas/endpoints dos buscadores. O endpoint de imagens do DuckDuckGo exige token de sessão VQD; o parser HTML do Startpage é sujeito a alterações. Openverse permanece implementado, mas fora do fluxo padrão até resolver a autenticação. Bing, Brave Search e Wikimedia Commons seguem em avaliação. A inclusão definitiva dependerá de testes de qualidade, estabilidade, disponibilidade e condições de uso. Não presumir que scraping seja permitido ou sustentável.
 
 ## Privacidade
 
