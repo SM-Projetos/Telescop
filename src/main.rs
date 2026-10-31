@@ -9,14 +9,29 @@ fn main() -> Result<(), slint::PlatformError> {
         .build()
         .expect("Não foi possível iniciar o runtime assíncrono");
 
-    // Keep the Brave API token out of source files and Git history.
-    let brave_api_key = std::env::var("BRAVE_SEARCH_API_KEY")
-        .ok()
-        .filter(|key| !key.trim().is_empty());
-
     let app = MainWindow::new()?;
     let app_handle = app.as_weak();
     let runtime_handle = runtime.handle().clone();
+
+    let bing_app_handle = app.as_weak();
+    app.on_open_bing_requested(move |query| {
+        let query = query.trim().to_owned();
+        if query.is_empty() {
+            return;
+        }
+
+        let mut url = reqwest::Url::parse("https://www.bing.com/images/search")
+            .expect("URL fixa do Bing Imagens deve ser válida");
+        url.query_pairs_mut().append_pair("q", &query);
+
+        let status = match webbrowser::open(url.as_str()) {
+            Ok(()) => "Bing Imagens aberto no navegador. Os resultados externos não são exibidos na galeria do Telescop.".to_owned(),
+            Err(error) => format!("Não foi possível abrir o Bing Imagens: {error}"),
+        };
+        if let Some(app) = bing_app_handle.upgrade() {
+            app.set_status(status.into());
+        }
+    });
 
     app.on_search_requested(move |query| {
         let query = query.trim().to_owned();
@@ -33,34 +48,13 @@ fn main() -> Result<(), slint::PlatformError> {
         ))));
 
         let app_handle = app.as_weak();
-        let brave_api_key = brave_api_key.clone();
         runtime_handle.spawn(async move {
-            // Brave is the preferred provider when a token is configured.
-            // Wikimedia Commons remains the fallback and requires no API key.
             let mut images = Vec::new();
-            let mut search_notes = Vec::new();
+            let mut search_errors = Vec::new();
 
-            if let Some(api_key) = brave_api_key {
-                match telescop::search::brave::search_images(&query, &api_key, 30).await {
-                    Ok(mut found) if !found.is_empty() => images.append(&mut found),
-                    Ok(_) => search_notes.push(
-                        "Brave Search não encontrou imagens; usando Wikimedia Commons.".to_owned()
-                    ),
-                    Err(error) => search_notes.push(format!(
-                        "Brave Search falhou ({error}); usando Wikimedia Commons."
-                    )),
-                }
-            } else {
-                search_notes.push(
-                    "Brave não configurado: defina BRAVE_SEARCH_API_KEY para ativá-lo. Usando Wikimedia Commons.".to_owned()
-                );
-            }
-
-            if images.is_empty() {
-                match telescop::search::commons::search_images(&query, 30).await {
-                    Ok(mut found) => images.append(&mut found),
-                    Err(error) => search_notes.push(format!("Wikimedia Commons: {error}")),
-                }
+            match telescop::search::commons::search_images(&query, 30).await {
+                Ok(mut found) => images.append(&mut found),
+                Err(error) => search_errors.push(format!("Wikimedia Commons: {error}")),
             }
             let found_count = images.len();
 
@@ -154,7 +148,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 }
 
                 if cards.is_empty() {
-                    let mut details = search_notes;
+                    let mut details = search_errors;
                     details.extend(download_errors.into_iter().take(3));
                     let base = if found_count == 0 {
                         "Nenhum resultado de imagem foi encontrado.".to_owned()
@@ -202,9 +196,9 @@ fn main() -> Result<(), slint::PlatformError> {
                         examples.join(" | ")
                     )
                 };
-                if !search_notes.is_empty() {
+                if !search_errors.is_empty() {
                     status.push_str(" ");
-                    status.push_str(&search_notes.join(" | "));
+                    status.push_str(&search_errors.join(" | "));
                 }
                 app.set_status(status.into());
             });
