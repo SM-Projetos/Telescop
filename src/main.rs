@@ -13,26 +13,6 @@ fn main() -> Result<(), slint::PlatformError> {
     let app_handle = app.as_weak();
     let runtime_handle = runtime.handle().clone();
 
-    let bing_app_handle = app.as_weak();
-    app.on_open_bing_requested(move |query| {
-        let query = query.trim().to_owned();
-        if query.is_empty() {
-            return;
-        }
-
-        let mut url = reqwest::Url::parse("https://www.bing.com/images/search")
-            .expect("URL fixa do Bing Imagens deve ser válida");
-        url.query_pairs_mut().append_pair("q", &query);
-
-        let status = match webbrowser::open(url.as_str()) {
-            Ok(()) => "Bing Imagens aberto no navegador. Os resultados externos não são exibidos na galeria do Telescop.".to_owned(),
-            Err(error) => format!("Não foi possível abrir o Bing Imagens: {error}"),
-        };
-        if let Some(app) = bing_app_handle.upgrade() {
-            app.set_status(status.into());
-        }
-    });
-
     app.on_search_requested(move |query| {
         let query = query.trim().to_owned();
         if query.is_empty() {
