@@ -39,7 +39,7 @@ fn main() -> Result<(), slint::PlatformError> {
             let found_count = images.len();
 
             let client = match reqwest::Client::builder()
-                .user_agent("Telescop/0.1.0 (native desktop image search)")
+                .user_agent("Telescop/0.1.0 (https://github.com/SM-Projetos/Telescop)")
                 .timeout(std::time::Duration::from_secs(20))
                 .build()
             {
