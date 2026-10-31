@@ -2,7 +2,7 @@
 
 Aplicativo desktop nativo para pesquisar imagens em diferentes fontes e reunir os resultados em uma galeria própria.
 
-> **Status:** em desenvolvimento. A pesquisa padrão utiliza a API documentada do Wikimedia Commons. DuckDuckGo e Startpage permanecem como adaptadores experimentais e não participam do fluxo padrão.
+> **Status:** em desenvolvimento. A pesquisa utiliza a API oficial do Brave Search quando uma chave está configurada e recorre ao Wikimedia Commons como alternativa.
 
 ## Tecnologias
 
@@ -10,17 +10,44 @@ Aplicativo desktop nativo para pesquisar imagens em diferentes fontes e reunir o
 - **Slint** — interface gráfica desktop nativa.
 - **Reqwest + Rustls** — requisições HTTP assíncronas com TLS.
 - **Serde** — desserialização das respostas JSON.
-- **MediaWiki API** — pesquisa de arquivos no Wikimedia Commons.
+- **Brave Search API** — pesquisa web de imagens.
+- **MediaWiki API** — fonte alternativa sem chave de API.
 
 O projeto não utiliza Tauri, Electron, WebView, HTML, CSS ou TypeScript.
 
 ## Pesquisa e galeria
 
-A pesquisa padrão utiliza a API do Wikimedia Commons para localizar arquivos e solicitar miniaturas. Os resultados são convertidos para o modelo comum `ImageResult` e as miniaturas são baixadas em paralelo, com limite de três requisições simultâneas, respeitando a orientação de uso da Wikimedia.
+Quando `BRAVE_SEARCH_API_KEY` está definida, a pesquisa usa o endpoint oficial de imagens do Brave, com país Brasil, idioma português e SafeSearch rigoroso. As miniaturas e os URLs originais são convertidos para o modelo comum `ImageResult`.
+
+Se a chave não estiver configurada, se a API falhar ou se o Brave não retornar resultados, o aplicativo utiliza o Wikimedia Commons como alternativa. O carregamento das miniaturas ocorre em paralelo, com limite de três requisições simultâneas.
 
 Falhas individuais de download ou decodificação não interrompem toda a pesquisa. O status apresenta a quantidade de resultados, miniaturas carregadas e exemplos de falhas para facilitar o diagnóstico.
 
-A disponibilidade da API e dos arquivos depende do serviço externo. O Wikimedia Commons contém apenas conteúdo disponibilizado sob suas políticas de licenciamento; verifique a licença e as condições de cada arquivo antes de reutilizá-lo.
+### Configurar a chave do Brave
+
+1. Crie uma conta e ative o plano Search no [painel oficial da API Brave](https://api-dashboard.search.brave.com/).
+2. Gere uma chave de API no painel.
+3. Defina a variável de ambiente antes de iniciar o aplicativo.
+
+No Fish:
+
+```fish
+set -x BRAVE_SEARCH_API_KEY "SUA_CHAVE_AQUI"
+cargo run
+```
+
+No Bash:
+
+```bash
+export BRAVE_SEARCH_API_KEY="SUA_CHAVE_AQUI"
+cargo run
+```
+
+A chave fica no ambiente do processo e não deve ser colocada no código, em arquivos versionados ou em mensagens públicas. Sem a variável, o Telescop continua funcionando com o Wikimedia Commons.
+
+A disponibilidade, as cotas e os custos da API dependem do plano e das condições vigentes no painel do Brave.
+
+O Wikimedia Commons contém apenas conteúdo disponibilizado sob suas políticas de licenciamento; verifique a licença e as condições de cada arquivo antes de reutilizá-lo. A API do Brave não concede direitos sobre imagens de terceiros; respeite os termos dos sites de origem.
 
 ## Adaptadores experimentais
 
