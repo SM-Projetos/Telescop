@@ -1,0 +1,122 @@
+import { Button, CheckBox, ComboBox, LineEdit } from "std-widgets.slint";
+
+export component MainWindow inherits Window {
+    title: "Telescop";
+    width: 1120px;
+    height: 760px;
+    min-width: 820px;
+    min-height: 600px;
+    background: #0d0f14;
+
+    callback search_requested(string);
+    in-out property <string> search_query: "";
+
+    VerticalLayout {
+        padding: 20px;
+        spacing: 16px;
+
+        HorizontalLayout {
+            alignment: center;
+            spacing: 12px;
+
+            Text {
+                text: "Telescop";
+                color: #f3f4f8;
+                font-size: 26px;
+                font-weight: 700;
+            }
+
+            Text {
+                text: "IMAGE SEARCH";
+                color: #8b93a5;
+                font-size: 11px;
+                vertical-alignment: center;
+            }
+
+            Rectangle { background: transparent; }
+            
+            ComboBox {
+                width: 150px;
+                model: ["Normal", "Anônimo", "Tor"];
+                current-index: 0;
+            }
+        }
+
+        Rectangle {
+            height: 1px;
+            background: #2a3040;
+        }
+
+        HorizontalLayout {
+            height: 48px;
+            spacing: 8px;
+
+            LineEdit {
+                placeholder-text: "Pesquise imagens...";
+                text <=> root.search_query;
+            }
+
+            Button {
+                text: "Pesquisar";
+                clicked => {
+                    root.search_requested(root.search_query);
+                }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 18px;
+            alignment: center;
+
+            CheckBox { text: "Bing"; checked: true; }
+            CheckBox { text: "DuckDuckGo"; checked: true; }
+            CheckBox { text: "Brave"; checked: false; }
+            CheckBox { text: "Openverse"; checked: true; }
+            CheckBox { text: "Wikimedia"; checked: true; }
+        }
+
+        HorizontalLayout {
+            spacing: 12px;
+            alignment: center;
+
+            Text { text: "Pesquisa segura"; color: #a1a8b8; }
+            ComboBox { model: ["Moderado", "Rigoroso", "Desativado"]; current-index: 0; }
+            Text { text: "Tamanho"; color: #a1a8b8; }
+            ComboBox { model: ["Qualquer", "Pequena", "Média", "Grande", "Muito grande"]; current-index: 0; }
+            Text { text: "Orientação"; color: #a1a8b8; }
+            ComboBox { model: ["Qualquer", "Horizontal", "Vertical", "Quadrada"]; current-index: 0; }
+        }
+
+        Rectangle {
+            background: #171b25;
+            border-radius: 14px;
+            border-width: 1px;
+            border-color: #2a3040;
+            vertical-stretch: 1;
+
+            VerticalLayout {
+                alignment: center;
+                spacing: 10px;
+
+                Text {
+                    text: "Sua galeria está vazia";
+                    color: #f3f4f8;
+                    font-size: 20px;
+                    horizontal-alignment: center;
+                }
+
+                Text {
+                    text: "Digite um termo acima para começar a pesquisar imagens.";
+                    color: #a1a8b8;
+                    horizontal-alignment: center;
+                }
+            }
+        }
+
+        HorizontalLayout {
+            Text { text: "Telescop • Fundação inicial"; color: #737d91; font-size: 11px; }
+            Rectangle { background: transparent; }
+            Text { text: "Rust + Slint"; color: #737d91; font-size: 11px; }
+        }
+    }
+}
