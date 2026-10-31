@@ -78,7 +78,9 @@ pub async fn search_images(
     if !status.is_success() {
         let detail = String::from_utf8_lossy(&body);
         let detail = detail.chars().take(500).collect::<String>();
-        return Err(format!("Brave Search API retornou HTTP {status}: {detail}").into());
+        return Err(std::io::Error::other(format!(
+            "Brave Search API retornou HTTP {status}: {detail}"
+        )).into());
     }
 
     let response: ApiResponse = serde_json::from_slice(&body)?;
