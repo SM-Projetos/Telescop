@@ -8,6 +8,8 @@ export component MainWindow inherits Window {
 
     callback search_requested(string);
     in-out property <string> search_query: "";
+    in-out property <string> status: "Pronto para pesquisar.";
+    in-out property <[string]> results: [];
 
     VerticalLayout {
         padding: 20px;
@@ -16,67 +18,37 @@ export component MainWindow inherits Window {
         HorizontalLayout {
             alignment: center;
             spacing: 12px;
-
-            Text {
-                text: "Telescop";
-                color: #f3f4f8;
-                font-size: 26px;
-                font-weight: 700;
-            }
-
-            Text {
-                text: "IMAGE SEARCH";
-                color: #8b93a5;
-                font-size: 11px;
-                vertical-alignment: center;
-            }
-
+            Text { text: "Telescop"; color: #f3f4f8; font-size: 26px; font-weight: 700; }
+            Text { text: "IMAGE SEARCH"; color: #8b93a5; font-size: 11px; vertical-alignment: center; }
             Rectangle { background: transparent; }
-            
-            ComboBox {
-                width: 150px;
-                model: ["Normal", "Anônimo", "Tor"];
-                current-index: 0;
-            }
+            ComboBox { width: 150px; model: ["Normal", "Anônimo", "Tor"]; current-index: 0; }
         }
 
-        Rectangle {
-            height: 1px;
-            background: #2a3040;
-        }
+        Rectangle { height: 1px; background: #2a3040; }
 
         HorizontalLayout {
             height: 48px;
             spacing: 8px;
-
-            LineEdit {
-                placeholder-text: "Pesquise imagens...";
-                text <=> root.search_query;
-            }
-
+            LineEdit { placeholder-text: "Pesquise imagens..."; text <=> root.search_query; }
             Button {
                 text: "Pesquisar";
-                clicked => {
-                    root.search_requested(root.search_query);
-                }
+                clicked => { root.search_requested(root.search_query); }
             }
         }
 
         HorizontalLayout {
             spacing: 18px;
             alignment: center;
-
-            CheckBox { text: "Bing"; checked: true; }
-            CheckBox { text: "DuckDuckGo"; checked: true; }
+            CheckBox { text: "Bing"; checked: false; }
+            CheckBox { text: "DuckDuckGo"; checked: false; }
             CheckBox { text: "Brave"; checked: false; }
             CheckBox { text: "Openverse"; checked: true; }
-            CheckBox { text: "Wikimedia"; checked: true; }
+            CheckBox { text: "Wikimedia"; checked: false; }
         }
 
         HorizontalLayout {
             spacing: 12px;
             alignment: center;
-
             Text { text: "Pesquisa segura"; color: #a1a8b8; }
             ComboBox { model: ["Moderado", "Rigoroso", "Desativado"]; current-index: 0; }
             Text { text: "Tamanho"; color: #a1a8b8; }
@@ -85,6 +57,8 @@ export component MainWindow inherits Window {
             ComboBox { model: ["Qualquer", "Horizontal", "Vertical", "Quadrada"]; current-index: 0; }
         }
 
+        Text { text: root.status; color: #a1a8b8; font-size: 12px; }
+
         Rectangle {
             background: #171b25;
             border-radius: 14px;
@@ -92,27 +66,29 @@ export component MainWindow inherits Window {
             border-color: #2a3040;
             vertical-stretch: 1;
 
-            VerticalLayout {
-                alignment: center;
-                spacing: 10px;
+            if root.results.length == 0 : Text {
+                text: "Os resultados da pesquisa aparecerão aqui.";
+                color: #a1a8b8;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
 
-                Text {
-                    text: "Sua galeria está vazia";
+            ListView {
+                width: parent.width;
+                height: parent.height;
+                for result in root.results: Text {
+                    text: result;
                     color: #f3f4f8;
-                    font-size: 20px;
-                    horizontal-alignment: center;
-                }
-
-                Text {
-                    text: "Digite um termo acima para começar a pesquisar imagens.";
-                    color: #a1a8b8;
-                    horizontal-alignment: center;
+                    font-size: 13px;
+                    vertical-alignment: center;
+                    height: 36px;
+                    x: 16px;
                 }
             }
         }
 
         HorizontalLayout {
-            Text { text: "Telescop • Fundação inicial"; color: #737d91; font-size: 11px; }
+            Text { text: "Telescop • Busca experimental Openverse"; color: #737d91; font-size: 11px; }
             Rectangle { background: transparent; }
             Text { text: "Rust + Slint"; color: #737d91; font-size: 11px; }
         }
