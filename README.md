@@ -2,7 +2,7 @@
 
 Aplicativo desktop nativo para pesquisar imagens em diferentes fontes e reunir os resultados em uma galeria própria.
 
-> **Status:** em desenvolvimento. A pesquisa integrada utiliza a API documentada do Wikimedia Commons. O Bing Imagens pode ser aberto no navegador com a consulta atual.
+> **Status:** em desenvolvimento. A pesquisa integrada utiliza a API documentada do Wikimedia Commons.
 
 ## Tecnologias
 
@@ -11,7 +11,6 @@ Aplicativo desktop nativo para pesquisar imagens em diferentes fontes e reunir o
 - **Reqwest + Rustls** — requisições HTTP assíncronas com TLS.
 - **Serde** — desserialização das respostas JSON.
 - **MediaWiki API** — pesquisa integrada de imagens no Wikimedia Commons.
-- **webbrowser** — abertura de pesquisas externas no navegador padrão.
 
 O projeto não utiliza Tauri, Electron, WebView, HTML, CSS ou TypeScript.
 
@@ -21,18 +20,14 @@ A pesquisa integrada utiliza a API documentada do Wikimedia Commons para localiz
 
 Falhas individuais de download ou decodificação não interrompem toda a pesquisa. O status apresenta a quantidade de resultados, miniaturas carregadas e exemplos de falhas para facilitar o diagnóstico.
 
-## Bing Imagens
-
-A Microsoft encerrou as Bing Search APIs, incluindo a API de pesquisa de imagens, em 11 de agosto de 2025. O produto foi desativado e não aceita novos cadastros. O recurso **Abrir Bing Imagens** abre a pesquisa no navegador padrão; ele não tenta extrair os resultados da página nem inseri-los na galeria.
-
-Não usamos scraping do Bing nem serviços que exijam assinatura ou chave paga para essa função.
-
-## Fontes e condições de uso
+## Fontes avaliadas
 
 - **Wikimedia Commons:** fonte integrada, através da API oficial do MediaWiki.
-- **Bing Imagens:** pesquisa externa aberta no navegador.
+- **Yandex Images:** possui uma API oficial, mas a pesquisa de imagens é tarifada. A documentação oficial informa cobrança de 915 rublos por mil consultas; por isso, não será integrada ao Telescop enquanto o projeto mantiver o requisito de usar apenas serviços gratuitos.
 - **DuckDuckGo e Startpage:** adaptadores experimentais preservados no código, mas desativados no fluxo padrão. O endpoint interno do DuckDuckGo retornou HTTP 403, e o parser HTML do Startpage depende de uma estrutura que pode mudar.
 - **Openverse:** adaptador preservado no código, mas fora do fluxo padrão.
+
+Não são usados scraping de páginas de resultados nem mecanismos que exijam assinatura, créditos pagos ou chave com cobrança.
 
 O Wikimedia Commons contém conteúdo sob diferentes licenças. Verifique a licença e as condições de cada arquivo antes de reutilizá-lo.
 
