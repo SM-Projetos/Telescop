@@ -23,7 +23,8 @@
 - Wikimedia Commons API page results are parsed as an ID-keyed object, matching the MediaWiki response format.
 
 ### Notes
-- Yandex Images has an official API, but its image-search requests are billed per query; it is excluded to preserve the project's free-only requirement.
+- Yandex Images has an official API, but image-search requests are billed (currently listed at approximately US$ 7.50 per 1,000 for USD-billed customers); it is excluded to preserve the project's free-only requirement.
+- No Yandex HTML scraping adapter is included because the service may restrict automated requests under its user agreement.
 - DuckDuckGo's undocumented image endpoint returned HTTP 403 and is not used by default.
 - Startpage's HTML structure is not a stable public API and may change without notice.
 - Openverse remains available in the code but is not used by the default search flow.
