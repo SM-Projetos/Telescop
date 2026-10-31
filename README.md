@@ -42,7 +42,7 @@ No Bash:
 
 ```bash
 read -s -p "Chave da API Brave: " BRAVE_SEARCH_API_KEY
-printf '\\n'
+printf '\n'
 export BRAVE_SEARCH_API_KEY
 cargo run
 ```
