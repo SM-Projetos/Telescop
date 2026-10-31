@@ -18,7 +18,6 @@ pub async fn search_images(query: &str, limit: u8) -> Result<Vec<ImageResult>, r
 fn parse_results(html: &str, limit: u8) -> Vec<ImageResult> {
     let document = Html::parse_document(html);
     let Ok(images) = Selector::parse("img") else { return Vec::new() };
-    let Ok(anchors) = Selector::parse("a") else { return Vec::new() };
     let mut results = Vec::new();
 
     for image in document.select(&images) {
