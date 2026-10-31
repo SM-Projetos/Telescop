@@ -16,7 +16,7 @@ O projeto não utiliza Tauri, Electron, WebView, HTML, CSS ou TypeScript.
 
 ## Pesquisa e galeria
 
-A pesquisa padrão utiliza a API do Wikimedia Commons para localizar arquivos e solicitar miniaturas. Os resultados são convertidos para o modelo comum `ImageResult` e as miniaturas são baixadas em paralelo, com limite de oito requisições simultâneas.
+A pesquisa padrão utiliza a API do Wikimedia Commons para localizar arquivos e solicitar miniaturas. Os resultados são convertidos para o modelo comum `ImageResult` e as miniaturas são baixadas em paralelo, com limite de três requisições simultâneas, respeitando a orientação de uso da Wikimedia.
 
 Falhas individuais de download ou decodificação não interrompem toda a pesquisa. O status apresenta a quantidade de resultados, miniaturas carregadas e exemplos de falhas para facilitar o diagnóstico.
 
