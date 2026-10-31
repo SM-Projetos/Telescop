@@ -64,20 +64,20 @@ fn main() -> Result<(), slint::PlatformError> {
                     let decoded = image::load_from_memory(&bytes).ok()?;
                     let (width, height) = (decoded.width(), decoded.height());
                     let thumbnail = decoded.thumbnail(320, 220).to_rgba8();
-                    let buffer = slint::SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(
-                        thumbnail.as_raw(), thumbnail.width(), thumbnail.height()
-                    );
+                    let (thumb_width, thumb_height) = thumbnail.dimensions();
                     let dimensions = match (item.width, item.height) {
                         (Some(w), Some(h)) => format!("{w} × {h}"),
                         _ if width > 0 && height > 0 => format!("{width} × {height}"),
                         _ => String::new(),
                     };
-                    Some(GalleryItem {
-                        thumbnail: slint::Image::from_rgba8(buffer),
-                        title: item.title.unwrap_or_else(|| "Imagem sem título".into()).into(),
-                        provider: item.provider.into(),
-                        dimensions: dimensions.into(),
-                    })
+                    Some((
+                        thumbnail.into_raw(),
+                        thumb_width,
+                        thumb_height,
+                        item.title.unwrap_or_else(|| "Imagem sem título".into()),
+                        item.provider,
+                        dimensions,
+                    ))
                 }
             })).buffer_unordered(8).filter_map(|card| async move { card }).collect::<Vec<_>>().await;
 
@@ -91,8 +91,17 @@ fn main() -> Result<(), slint::PlatformError> {
                     return;
                 }
 
-                let count = cards.len();
-                app.set_results(slint::ModelRc::from(Rc::new(slint::VecModel::from(cards))));
+                let gallery_items = cards.into_iter().map(|(pixels, width, height, title, provider, dimensions)| {
+                    let buffer = slint::SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(&pixels, width, height);
+                    GalleryItem {
+                        thumbnail: slint::Image::from_rgba8(buffer),
+                        title: title.into(),
+                        provider: provider.into(),
+                        dimensions: dimensions.into(),
+                    }
+                }).collect::<Vec<_>>();
+                let count = gallery_items.len();
+                app.set_results(slint::ModelRc::from(Rc::new(slint::VecModel::from(gallery_items))));
                 let status = if errors.is_empty() {
                     format!("{count} imagem(ns) carregada(s) na galeria.")
                 } else {
