@@ -2,22 +2,22 @@
 
 Aplicativo desktop nativo para pesquisar imagens em diferentes fontes e reunir os resultados em uma galeria própria.
 
-> **Status:** fundação inicial em desenvolvimento. A interface e a estrutura Rust + Slint foram iniciadas; os mecanismos de busca ainda serão implementados e avaliados.
+> **Status:** em desenvolvimento. A fundação Rust + Slint está funcional e o primeiro provedor experimental, Openverse, está integrado.
 
 ## Tecnologias
 
 - **Rust** — lógica da aplicação, integração com provedores e processamento dos resultados.
 - **Slint** — interface gráfica desktop nativa.
+- **Reqwest + Rustls** — requisições HTTP assíncronas com TLS.
+- **Serde** — desserialização das respostas JSON.
 
 O projeto não utiliza Tauri, Electron, WebView, HTML, CSS ou TypeScript.
 
-## Objetivos iniciais
+## Pesquisa experimental
 
-- Pesquisar em múltiplas fontes independentes.
-- Exibir resultados progressivamente em uma galeria própria.
-- Normalizar resultados e identificar imagens duplicadas.
-- Oferecer filtros por tamanho, orientação e proporção.
-- Ter controles claros de privacidade, proxy e Tor, sem fallback silencioso para conexão direta.
+O primeiro adaptador consulta a API pública de imagens do Openverse. A pesquisa é executada de forma assíncrona para não bloquear a interface e os resultados são convertidos para o modelo comum `ImageResult`.
+
+A integração inicial exibe título, dimensões disponíveis e provedor. A exibição das miniaturas, filtros efetivos e deduplicação serão implementados nas próximas etapas. A disponibilidade e os limites da API dependem do serviço externo.
 
 ## Desenvolvimento
 
@@ -36,14 +36,14 @@ cargo check
 ## Estrutura
 
 - `src/` — código Rust.
-- `src/search/` — modelo e futura coordenação de buscas.
+- `src/search/` — modelo comum e adaptadores de busca.
 - `ui/` — interface Slint.
 - `docs/ARCHITECTURE.md` — arquitetura e etapas planejadas.
 - `CHANGELOG.md` — histórico de alterações.
 
 ## Fontes em avaliação
 
-Bing, DuckDuckGo, Brave Search, Startpage, Openverse e Wikimedia Commons são candidatas iniciais. A seleção final dependerá de testes de qualidade, estabilidade, disponibilidade e condições de uso de cada serviço.
+Openverse está integrado experimentalmente. Bing, DuckDuckGo, Brave Search, Startpage e Wikimedia Commons continuam em avaliação. A seleção final dependerá de qualidade, estabilidade, disponibilidade e condições de uso de cada serviço.
 
 ## Licença
 
