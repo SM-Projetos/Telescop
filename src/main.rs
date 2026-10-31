@@ -25,18 +25,11 @@ fn main() -> Result<(), slint::PlatformError> {
 
         let app_handle = app.as_weak();
         runtime_handle.spawn(async move {
-            let (ddg, startpage) = tokio::join!(
-                telescop::search::duckduckgo::search_images(&query, 30),
-                telescop::search::startpage::search_images(&query, 30)
-            );
-
+            // DuckDuckGo's undocumented image endpoint currently returns HTTP 403.
+            // Keep it out of the default flow until a reliable integration is available.
             let mut images = Vec::new();
             let mut errors = Vec::new();
-            match ddg {
-                Ok(mut found) => images.append(&mut found),
-                Err(error) => errors.push(format!("DuckDuckGo: {error}")),
-            }
-            match startpage {
+            match telescop::search::startpage::search_images(&query, 30).await {
                 Ok(mut found) => images.append(&mut found),
                 Err(error) => errors.push(format!("Startpage: {error}")),
             }
