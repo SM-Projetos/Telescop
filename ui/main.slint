@@ -46,11 +46,9 @@ export component MainWindow inherits Window {
         HorizontalLayout {
             spacing: 18px;
             alignment: center;
-            CheckBox { text: "Bing"; checked: false; }
-            Text { text: "DuckDuckGo ✓"; color: #22d3ee; }
-            CheckBox { text: "Brave"; checked: false; }
-            Text { text: "Startpage ✓"; color: #22d3ee; }
-            CheckBox { text: "Wikimedia"; checked: false; }
+            Text { text: "Brave Search API"; color: #22d3ee; }
+            Text { text: "Wikimedia Commons (alternativa)"; color: #22d3ee; }
+            Text { text: "DuckDuckGo / Startpage: experimentais"; color: #737d91; }
         }
 
         HorizontalLayout {
@@ -137,7 +135,7 @@ export component MainWindow inherits Window {
         }
 
         HorizontalLayout {
-            Text { text: "Telescop • DuckDuckGo + Startpage"; color: #737d91; font-size: 11px; }
+            Text { text: "Telescop • Brave Search + Wikimedia Commons"; color: #737d91; font-size: 11px; }
             Rectangle { background: transparent; }
             Text { text: "Rust + Slint"; color: #737d91; font-size: 11px; }
         }
