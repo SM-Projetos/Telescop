@@ -1,4 +1,4 @@
-import { Button, CheckBox, ComboBox, LineEdit, ListView } from "std-widgets.slint";
+import { Button, CheckBox, ComboBox, LineEdit, ListView, TextEdit } from "std-widgets.slint";
 
 export component MainWindow inherits Window {
     title: "Telescop";
@@ -57,7 +57,24 @@ export component MainWindow inherits Window {
             ComboBox { model: ["Qualquer", "Horizontal", "Vertical", "Quadrada"]; current-index: 0; }
         }
 
-        Text { text: root.status; color: #a1a8b8; font-size: 12px; }
+        Rectangle {
+            height: 76px;
+            background: #11141c;
+            border-radius: 8px;
+            border-width: 1px;
+            border-color: #2a3040;
+
+            TextEdit {
+                width: parent.width - 20px;
+                height: parent.height - 16px;
+                x: 10px;
+                y: 8px;
+                text: root.status;
+                read-only: true;
+                font-size: 12px;
+                wrap: word-wrap;
+            }
+        }
 
         Rectangle {
             background: #171b25;
