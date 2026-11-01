@@ -60,6 +60,7 @@ pub async fn search_images(
         .header("sec-fetch-dest", "document")
         .header("sec-fetch-mode", "navigate")
         .header("sec-fetch-site", "none")
+        .header("sec-fetch-user", "?1")
         .header("upgrade-insecure-requests", "1")
         .send()
         .await
@@ -72,7 +73,6 @@ pub async fn search_images(
         return Err(http_status_error("abrir a página de imagens", page_status));
     }
 
-    let referer = page_response.url().clone();
     let html = page_response
         .text()
         .await
@@ -94,15 +94,13 @@ pub async fn search_images(
             ("o", "json"),
             ("l", "br-pt"),
             ("vqd", token.as_str()),
-            ("p", "1"),
-            ("s", "0"),
         ])
         .header(
             reqwest::header::ACCEPT,
             "application/json, text/javascript, */*; q=0.01",
         )
         .header(reqwest::header::ACCEPT_LANGUAGE, "pt-BR,pt;q=0.9,en;q=0.8")
-        .header(reqwest::header::REFERER, referer.as_str())
+        .header(reqwest::header::REFERER, PAGE_URL)
         .header("x-requested-with", "XMLHttpRequest")
         .header("sec-fetch-dest", "empty")
         .header("sec-fetch-mode", "cors")
