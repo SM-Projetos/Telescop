@@ -7,7 +7,7 @@ use std::rc::Rc;
 use crate::{MainWindow, webview::SlintServoAdapter};
 use servo::{ConsoleLogLevel, LoadStatus, WebView, WebViewDelegate};
 
-const DUCKDUCKGO_PAGE_SETUP_SCRIPT: &str = r#"
+const DUCKDUCKGO_PAGE_SETUP_SCRIPT: &str = r##"
 (() => {
     if (!/(^|\.)duckduckgo\.com$/i.test(location.hostname)) {
         return "not a DuckDuckGo page";
@@ -42,9 +42,9 @@ const DUCKDUCKGO_PAGE_SETUP_SCRIPT: &str = r#"
         searchStyleInstalled: Boolean(document.getElementById("telescop-hide-ddg-search"))
     });
 })()
-"#;
+"##;
 
-const DUCKDUCKGO_DOM_DIAGNOSTICS_SCRIPT: &str = r#"
+const DUCKDUCKGO_DOM_DIAGNOSTICS_SCRIPT: &str = r##"
 (() => {
     if (!document.getElementById("telescop-hide-ddg-search")) {
         const style = document.createElement("style");
@@ -77,7 +77,7 @@ const DUCKDUCKGO_DOM_DIAGNOSTICS_SCRIPT: &str = r#"
     window.setTimeout(snapshot, 3000);
     return "DOM snapshots scheduled";
 })()
-"#;
+"##;
 
 
 /// Servo delegate for handling browser engine callbacks.
