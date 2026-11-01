@@ -8,12 +8,13 @@ Aplicativo desktop nativo para Linux que incorpora o mecanismo de navegação Se
 
 - Barra de pesquisa na parte superior.
 - Pesquisa direcionada à seção de imagens do DuckDuckGo, em português do Brasil.
+- Campo de pesquisa interno do DuckDuckGo ocultado dentro do Telescop; o logotipo e as opções de navegação do site são preservados.
 - Página real renderizada dentro da janela do Telescop.
 - Navegação por cliques, rolagem e teclado na área web.
 - Controles para voltar, avançar e recarregar.
 - Sem galeria própria, raspagem de resultados ou download automático de imagens.
 
-O texto digitado é codificado como parâmetro de URL e enviado ao endereço do DuckDuckGo com os parâmetros `ia=images`, `iax=images` e `kl=br-pt`. A página é carregada diretamente pelo Servo. A aplicação não utiliza a API de pesquisa nem o endpoint interno de imagens do DuckDuckGo.
+O texto digitado é codificado como parâmetro de URL e enviado ao endereço do DuckDuckGo com os parâmetros `ia=images`, `iax=images` e `kl=br-pt`. A página é carregada diretamente pelo Servo. A aplicação não utiliza a API de pesquisa nem o endpoint interno de imagens do DuckDuckGo. O campo de pesquisa do cabeçalho do DuckDuckGo é ocultado por estilo aplicado somente às páginas desse domínio, para que a busca seja feita pela barra do Telescop.
 
 ## Tecnologias
 
@@ -54,6 +55,7 @@ A primeira compilação baixa e compila uma quantidade grande de dependências d
 - Não há abas, histórico persistente, favoritos, downloads, gerenciamento de cookies pela interface ou painel de desenvolvedor.
 - Não há extração de imagens, galeria própria ou verificação automática de licenças nesta etapa.
 - O navegador usa o armazenamento e a configuração padrão disponibilizados pelo Servo; o Telescop ainda não oferece controles de privacidade próprios.
+- O Telescop registra no terminal estados de carregamento, mensagens do console JavaScript, falhas de execução, animação e contagens de imagens no DOM para auxiliar o diagnóstico de páginas sem resultados. Execute `cargo run` pelo terminal para visualizar essas mensagens.
 
 ## Estrutura
 

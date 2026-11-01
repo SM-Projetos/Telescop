@@ -3,6 +3,8 @@
 ## [0.1.0] - Unreleased
 
 ### Added
+- Servo diagnostics for page load states, JavaScript console/errors, animation state and DuckDuckGo image DOM counts.
+- Hide the DuckDuckGo page search field inside Telescop while preserving the site's logo and navigation options.
 - Experimental embedded Servo web engine integrated into the Slint window through WGPU 3.0.
 - DuckDuckGo Images URL builder that safely encodes the user's current query and applies the Brazilian Portuguese region.
 - Embedded browser controls for back, forward and reload.

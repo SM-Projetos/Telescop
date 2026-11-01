@@ -31,6 +31,7 @@ Aplicativo desktop nativo para Linux que mantém a interface Slint e renderiza u
 4. O callback Slint `WebviewLogic.loadUrl` solicita ao Servo a navegação para esse endereço.
 5. O Servo carrega e renderiza o site completo.
 6. O delegado recebe notificações de novos frames, pinta o WebView e atualiza a imagem apresentada na interface Slint.
+7. Em páginas DuckDuckGo, o delegado registra erros JavaScript e estados de carregamento; após a conclusão, coleta contagens de imagens e elementos candidatos a resultados. O campo de pesquisa do cabeçalho é ocultado sem remover o logotipo nem as opções de navegação.
 
 Não existe chamada ao SearXNG, à API oficial DuckDuckGo, ao endpoint interno `i.js`, nem extração dos resultados HTML/JSON. A página exibida é o próprio site remoto.
 
@@ -38,7 +39,7 @@ Não existe chamada ao SearXNG, à API oficial DuckDuckGo, ao endpoint interno `
 
 O callback de navegação interpreta apenas URLs completos gerados pela aplicação; entradas inválidas são ignoradas, sem conversão automática em pesquisa do Google.
 
-A área de navegação encaminha eventos de teclado, mouse, toque e rolagem para o WebView do Servo. As ações voltar, avançar e recarregar são encaminhadas pelos métodos do WebView. O Servo sinaliza novas atividades por um `EventLoopWaker`; o adaptador usa um canal smol para acordar a tarefa local do Slint e executar `spin_event_loop`.
+A área de navegação encaminha eventos de teclado, mouse, toque e rolagem para o WebView do Servo. As mensagens de diagnóstico usam prefixos `[SERVO]` e são emitidas no terminal, sem incluir a consulta digitada no endereço registrado pelo Telescop. As ações voltar, avançar e recarregar são encaminhadas pelos métodos do WebView. O Servo sinaliza novas atividades por um `EventLoopWaker`; o adaptador usa um canal smol para acordar a tarefa local do Slint e executar `spin_event_loop`.
 
 ## Renderização
 
@@ -51,6 +52,7 @@ O exemplo oficial integra Servo e Slint usando WGPU 3.0. No alvo Linux, o caminh
 - O protótipo mantém uma única WebView e não possui abas ou histórico persistente.
 - Downloads, favoritos, controles de cookies, permissões, configurações de privacidade e ferramentas de desenvolvedor não fazem parte desta etapa.
 - A pesquisa carrega o site em vez de normalizar resultados em objetos de imagem. A galeria anterior deixa de existir.
+- Os seletores DOM usados para contar imagens são apenas indicadores de diagnóstico; podem precisar de atualização se o DuckDuckGo mudar sua estrutura interna.
 
 ## Construção e plataforma
 
