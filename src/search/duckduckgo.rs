@@ -6,6 +6,8 @@ use super::ImageResult;
 const PAGE_URL: &str = "https://duckduckgo.com/";
 const IMAGE_URL: &str = "https://duckduckgo.com/i.js";
 const USER_AGENT: &str = "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0";
+const REGION: &str = "br-pt";
+const CONTENT_LANGUAGE: &str = "PT";
 const MAX_QUERY_CHARS: usize = 499;
 
 #[derive(Debug, Deserialize)]
@@ -39,29 +41,19 @@ pub async fn search_images(
         )));
     }
 
+    // Keep the same User-Agent for both requests: DuckDuckGo binds VQD
+    // validation tokens to the search query and the HTTP client identity.
     let client = reqwest::Client::builder()
         .user_agent(USER_AGENT)
         .timeout(Duration::from_secs(25))
         .build()?;
 
-    // This reproduces the image-search URL supplied for Telescop:
+    // This URL always uses the current text from the Telescop search field:
     // https://duckduckgo.com/?q=<query>&iar=images&t=h_
-    let page_url = build_page_url(query);
     let page_response = client
-        .get(page_url)
-        .header(
-            reqwest::header::ACCEPT,
-            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        )
-        .header(
-            reqwest::header::ACCEPT_LANGUAGE,
-            "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-        )
-        .header("sec-fetch-dest", "document")
-        .header("sec-fetch-mode", "navigate")
-        .header("sec-fetch-site", "none")
-        .header("sec-fetch-user", "?1")
-        .header("upgrade-insecure-requests", "1")
+        .get(build_page_url(query))
+        .header(reqwest::header::ACCEPT, "text/html,application/xhtml+xml,*/*;q=0.8")
+        .header(reqwest::header::ACCEPT_LANGUAGE, "pt-BR,pt;q=0.9,en;q=0.8")
         .send()
         .await
         .map_err(|error| {
@@ -78,33 +70,22 @@ pub async fn search_images(
         .await
         .map_err(|error| provider_error(format!("falha ao ler a página de imagens: {error}")))?;
 
+    // Match the VQD field used by DuckDuckGo's current image-search page.
+    // Do not accept an arbitrary occurrence of "vqd=" elsewhere in the HTML.
     let token = extract_vqd(&html).ok_or_else(|| {
         provider_error(
-            "o DuckDuckGo não forneceu o token VQD; a página pode ter mudado ou bloqueado a requisição"
+            "o DuckDuckGo não forneceu o token VQD da pesquisa atual; a página pode ter mudado ou bloqueado a requisição"
                 .to_owned(),
         )
     })?;
 
-    // The HTML page is not itself a machine-readable list of images.
-    // DuckDuckGo's page requests image records from this JSON endpoint.
+    // The image page uses a JSON endpoint. Its parameters mirror the current
+    // DuckDuckGo image-search request flow used by SearXNG's maintained code.
     let image_response = client
-        .get(IMAGE_URL)
-        .query(&[
-            ("q", query),
-            ("o", "json"),
-            ("l", "br-pt"),
-            ("vqd", token.as_str()),
-        ])
-        .header(
-            reqwest::header::ACCEPT,
-            "application/json, text/javascript, */*; q=0.01",
-        )
-        .header(reqwest::header::ACCEPT_LANGUAGE, "pt-BR,pt;q=0.9,en;q=0.8")
+        .get(build_image_url(query, &token))
+        .header(reqwest::header::ACCEPT, "*/*")
         .header(reqwest::header::REFERER, PAGE_URL)
-        .header("x-requested-with", "XMLHttpRequest")
-        .header("sec-fetch-dest", "empty")
-        .header("sec-fetch-mode", "cors")
-        .header("sec-fetch-site", "same-origin")
+        .header(reqwest::header::COOKIE, "ad=pt-br; ah=br-pt; l=br-pt")
         .send()
         .await
         .map_err(|error| {
@@ -140,7 +121,7 @@ pub async fn search_images(
             height: item.height,
             creator: None,
             // DuckDuckGo's image response does not provide reliable license
-            // metadata; the UI must label these results as unverified.
+            // metadata; the UI labels these results as unverified.
             license: None,
             license_url: None,
             attribution: None,
@@ -157,6 +138,20 @@ fn build_page_url(query: &str) -> reqwest::Url {
     url
 }
 
+fn build_image_url(query: &str, token: &str) -> reqwest::Url {
+    let mut url = reqwest::Url::parse(IMAGE_URL).expect("IMAGE_URL deve ser uma URL válida");
+    url.query_pairs_mut()
+        .append_pair("o", "json")
+        .append_pair("q", query)
+        .append_pair("u", "bing")
+        .append_pair("l", REGION)
+        .append_pair("bpia", "1")
+        .append_pair("vqd", token)
+        .append_pair("a", "h_")
+        .append_pair("ct", CONTENT_LANGUAGE);
+    url
+}
+
 fn provider_error(message: String) -> Box<dyn Error + Send + Sync> {
     Box::new(io::Error::new(io::ErrorKind::Other, message))
 }
@@ -166,7 +161,7 @@ fn http_status_error(
     status: reqwest::StatusCode,
 ) -> Box<dyn Error + Send + Sync> {
     let detail = if status == reqwest::StatusCode::FORBIDDEN {
-        "o acesso foi bloqueado pelo DuckDuckGo"
+        "o DuckDuckGo bloqueou esta requisição (proteção contra automação ou bloqueio temporário); aguarde antes de tentar novamente"
     } else if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
         "o DuckDuckGo limitou temporariamente as requisições"
     } else {
@@ -178,56 +173,53 @@ fn http_status_error(
 }
 
 fn extract_vqd(html: &str) -> Option<String> {
-    for marker in ["vqd=\"", "vqd='", "vqd="] {
-        if let Some((_, tail)) = html.split_once(marker) {
-            let end = if marker == "vqd=\"" {
-                tail.find('"')
-            } else if marker == "vqd='" {
-                tail.find('\'')
-            } else {
-                tail.find(|character: char| {
-                    matches!(character, '&' | '"' | '\'' | '<' | ';' | ' ')
-                })
-            };
-
-            if let Some(end) = end {
-                let value = &tail[..end];
-                if !value.is_empty() {
-                    return Some(value.to_owned());
-                }
-            }
-        }
-    }
-    None
+    let (_, tail) = html.split_once("vqd=\"")?;
+    let (value, _) = tail.split_once('"')?;
+    (!value.trim().is_empty()).then(|| value.to_owned())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{build_page_url, extract_vqd};
+    use super::{build_image_url, build_page_url, extract_vqd};
 
     #[test]
-    fn builds_the_requested_duckduckgo_images_url() {
-        let url = build_page_url("carro de corrida");
+    fn builds_the_requested_url_from_each_search_term() {
+        for query in ["carro", "montanha", "carro de corrida", "árvore"] {
+            let url = build_page_url(query);
+            let parameters = url.query_pairs().collect::<Vec<_>>();
+
+            assert_eq!(parameters[0].0, "q");
+            assert_eq!(parameters[0].1, query);
+            assert_eq!(parameters[1].0, "iar");
+            assert_eq!(parameters[1].1, "images");
+            assert_eq!(parameters[2].0, "t");
+            assert_eq!(parameters[2].1, "h_");
+        }
+    }
+
+    #[test]
+    fn builds_the_image_json_request_with_the_same_search_term() {
+        let url = build_image_url("carro de corrida", "test-vqd");
         let parameters = url.query_pairs().collect::<Vec<_>>();
+        let value = |key: &str| {
+            parameters
+                .iter()
+                .find(|(name, _)| name == key)
+                .map(|(_, value)| value.as_ref())
+        };
 
-        assert_eq!(parameters[0].0, "q");
-        assert_eq!(parameters[0].1, "carro de corrida");
-        assert_eq!(parameters[1].0, "iar");
-        assert_eq!(parameters[1].1, "images");
-        assert_eq!(parameters[2].0, "t");
-        assert_eq!(parameters[2].1, "h_");
+        assert_eq!(value("q"), Some("carro de corrida"));
+        assert_eq!(value("o"), Some("json"));
+        assert_eq!(value("u"), Some("bing"));
+        assert_eq!(value("l"), Some("br-pt"));
+        assert_eq!(value("bpia"), Some("1"));
+        assert_eq!(value("vqd"), Some("test-vqd"));
+        assert_eq!(value("a"), Some("h_"));
+        assert_eq!(value("ct"), Some("PT"));
     }
 
     #[test]
-    fn extracts_single_quoted_vqd_token() {
-        assert_eq!(
-            extract_vqd("<input value='x' data-vqd='token-123'>"),
-            Some("token-123".to_owned())
-        );
-    }
-
-    #[test]
-    fn extracts_double_quoted_vqd_token() {
+    fn extracts_the_vqd_token_from_the_page() {
         assert_eq!(
             extract_vqd(r#"<script>vqd="token-456";</script>"#),
             Some("token-456".to_owned())
@@ -235,16 +227,8 @@ mod tests {
     }
 
     #[test]
-    fn extracts_unquoted_vqd_token() {
-        assert_eq!(
-            extract_vqd("vqd=token-789&other=value"),
-            Some("token-789".to_owned())
-        );
-    }
-
-    #[test]
-    fn returns_none_when_token_is_missing_or_empty() {
+    fn rejects_missing_or_empty_vqd_values() {
         assert_eq!(extract_vqd("<html>sem token</html>"), None);
-        assert_eq!(extract_vqd("vqd=&other=value"), None);
+        assert_eq!(extract_vqd(r#"vqd="";"#), None);
     }
 }
