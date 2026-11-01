@@ -1,3 +1,4 @@
+use scraper::Html;
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -37,6 +38,14 @@ struct ImageInfo {
     height: Option<u32>,
     #[serde(default)]
     descriptionurl: Option<String>,
+    #[serde(default)]
+    extmetadata: HashMap<String, MetadataValue>,
+}
+
+#[derive(Debug, Deserialize)]
+struct MetadataValue {
+    #[serde(default)]
+    value: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -66,7 +75,7 @@ pub async fn search_images(
             ("gsrsearch", query),
             ("gsrlimit", limit.as_str()),
             ("prop", "imageinfo"),
-            ("iiprop", "url|size"),
+            ("iiprop", "url|size|extmetadata"),
             ("iiurlwidth", "640"),
         ])
         .send()
@@ -89,6 +98,11 @@ pub async fn search_images(
         .into_iter()
         .filter_map(|page| {
             let info = page.imageinfo.into_iter().next()?;
+            let creator = metadata_value(&info.extmetadata, "Artist");
+            let license = metadata_value(&info.extmetadata, "LicenseShortName");
+            let license_url = metadata_value(&info.extmetadata, "LicenseUrl");
+            let attribution = metadata_value(&info.extmetadata, "Attribution");
+
             Some(ImageResult {
                 image_url: info.url,
                 thumbnail_url: info.thumburl,
@@ -97,7 +111,29 @@ pub async fn search_images(
                 provider: "Wikimedia Commons".into(),
                 width: info.width,
                 height: info.height,
+                creator,
+                license,
+                license_url,
+                attribution,
             })
         })
         .collect())
+}
+
+fn metadata_value(
+    metadata: &HashMap<String, MetadataValue>,
+    key: &str,
+) -> Option<String> {
+    let value = metadata.get(key)?.value.trim();
+    let plain_text = Html::parse_fragment(value)
+        .root_element()
+        .text()
+        .collect::<String>();
+    let plain_text = plain_text.trim();
+
+    if plain_text.is_empty() {
+        None
+    } else {
+        Some(plain_text.to_owned())
+    }
 }
