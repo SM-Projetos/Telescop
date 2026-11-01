@@ -38,6 +38,10 @@ pub async fn search_images(query: &str, limit: u8) -> Result<Vec<ImageResult>, B
             provider: "DuckDuckGo".into(),
             width: item.width,
             height: item.height,
+            creator: None,
+            license: None,
+            license_url: None,
+            attribution: None,
         }).collect())
 }
 
