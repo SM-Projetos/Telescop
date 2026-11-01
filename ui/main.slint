@@ -145,7 +145,7 @@ export component MainWindow inherits Window {
                             Text { text: result.dimensions; color: #a1a8b8; font-size: 11px; }
                             Text {
                                 text: result.rights;
-                                color: if result.rights_verified { #a1a8b8 } else { #fbbf24 };
+                                color: result.rights_verified ? #a1a8b8 : #fbbf24;
                                 font-size: 10px;
                                 wrap: word-wrap;
                             }
