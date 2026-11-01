@@ -31,6 +31,7 @@
 - Wikimedia Commons results now require explicit reusable-rights metadata; non-commercial, no-derivatives and unknown licenses are excluded.
 - Extended ImageResult with creator, license, license URL and attribution metadata.
 - Display license and attribution alongside each gallery result.
+- Fix the Slint conditional color binding for license verification status using the ternary operator.
 - Updated README and architecture documentation for the five-source search flow and the distinction between verified and unverified image rights.
 
 ### Notes
