@@ -42,9 +42,9 @@ struct ImageAsset {
     #[serde(default)]
     url: Option<String>,
     #[serde(default)]
-    width: Option<u32>,
+    width: Option<String>,
     #[serde(default)]
-    height: Option<u32>,
+    height: Option<String>,
 }
 
 /// Search only Cleveland Museum of Art works whose image rights are explicitly CC0.
@@ -62,14 +62,18 @@ pub async fn search_images(
         .build()?;
 
     let limit = limit.clamp(1, 50).to_string();
+    let mut url = reqwest::Url::parse(API_URL)?;
+    {
+        let mut parameters = url.query_pairs_mut();
+        parameters
+            .append_pair("q", query)
+            .append_key_only("cc0")
+            .append_pair("has_image", "1")
+            .append_pair("limit", limit.as_str());
+    }
+
     let response = client
-        .get(API_URL)
-        .query(&[
-            ("q", query),
-            ("cc0", "1"),
-            ("has_image", "1"),
-            ("limit", limit.as_str()),
-        ])
+        .get(url)
         .send()
         .await?
         .error_for_status()?
@@ -119,8 +123,8 @@ fn to_image_result(artwork: Artwork) -> Option<ImageResult> {
         title,
         source_page: artwork.url,
         provider: "Cleveland Museum of Art".into(),
-        width: image.width,
-        height: image.height,
+        width: image.width.and_then(|value| value.parse().ok()),
+        height: image.height.and_then(|value| value.parse().ok()),
         creator,
         license: Some("CC0".into()),
         license_url: Some("https://creativecommons.org/publicdomain/zero/1.0/".into()),
@@ -144,8 +148,8 @@ mod tests {
             images: Some(ImageSet {
                 web: Some(ImageAsset {
                     url: Some("https://openaccess-cdn.clevelandart.org/example.jpg".into()),
-                    width: Some(900),
-                    height: Some(600),
+                    width: Some("900".into()),
+                    height: Some("600".into()),
                 }),
             }),
         };
