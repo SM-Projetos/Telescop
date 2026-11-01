@@ -22,8 +22,6 @@ pub struct GPURenderingContext {
     pub size: Cell<PhysicalSize<u32>>,
     pub swap_chain: SwapChain<Device>,
     pub surfman_rendering_info: SurfmanRenderingContext,
-    #[cfg(target_os = "windows")]
-    pub d3d11_state: super::directx::D3D11SharedState,
 }
 
 impl Drop for GPURenderingContext {
@@ -43,11 +41,7 @@ impl GPURenderingContext {
 
         let connection = Connection::new()?;
 
-        #[cfg(not(target_os = "windows"))]
         let adapter = connection.create_adapter()?;
-
-        #[cfg(target_os = "windows")]
-        let adapter = Self::pick_synchronized_adapter(&connection, wgpu_device)?;
 
         let surfman_rendering_info = SurfmanRenderingContext::new(&connection, &adapter)?;
 
@@ -62,115 +56,23 @@ impl GPURenderingContext {
 
         let swap_chain = surfman_rendering_info.create_attached_swap_chain()?;
 
-        #[cfg(target_os = "windows")]
-        let d3d11_state = Self::init_d3d11_shared_state(&surfman_rendering_info.device.borrow())?;
-
         Ok(Self {
             swap_chain,
             size: Cell::new(size),
             surfman_rendering_info,
-            #[cfg(target_os = "windows")]
-            d3d11_state,
         })
-    }
-
-    #[cfg(target_os = "windows")]
-    fn pick_synchronized_adapter(
-        connection: &Connection,
-        wgpu_device: &wgpu::Device,
-    ) -> Result<surfman::Adapter, surfman::Error> {
-        // On Windows, Slint and Surfman must use the exact same physical GPU (LUID)
-        // to enable zero-copy texture sharing via shared handles.
-        // This requires WGPU to be running on the DX12 backend.
-        let wgpu_luid = unsafe {
-            use slint::wgpu_30::wgpu::hal::api::Dx12;
-            wgpu_device
-                .as_hal::<Dx12>()
-                .ok_or(surfman::Error::Failed)?
-                .raw_device()
-                .GetAdapterLuid()
-        };
-
-        use windows::{
-            Win32::Graphics::{Direct3D11::ID3D11Device, Dxgi},
-            core::{IUnknown, Interface},
-        };
-
-        // We iterate through Surfman's adapter presets to find the one that matches WGPU's selection.
-        for create_adapter_fn in &[
-            Connection::create_hardware_adapter
-                as fn(&Connection) -> Result<surfman::Adapter, surfman::Error>,
-            Connection::create_low_power_adapter,
-            Connection::create_adapter,
-        ] {
-            if let Ok(surfman_adapter) = create_adapter_fn(connection) {
-                // To verify the match, we create a temporary device and extract its D3D11 LUID.
-                if let Ok(temp_device) = connection.create_device(&surfman_adapter) {
-                    let d3d11_device_ptr = temp_device.native_device().d3d11_device;
-                    let d3d11_device: ID3D11Device =
-                        unsafe { IUnknown::from_raw(d3d11_device_ptr as *mut _).cast().unwrap() };
-
-                    let surfman_luid = unsafe {
-                        d3d11_device
-                            .cast::<Dxgi::IDXGIDevice>()
-                            .unwrap()
-                            .GetAdapter()
-                            .unwrap()
-                            .GetDesc()
-                            .unwrap()
-                            .AdapterLuid
-                    };
-
-                    // Compare the Surfman LUID with the WGPU LUID.
-                    if surfman_luid.HighPart == wgpu_luid.HighPart
-                        && surfman_luid.LowPart == wgpu_luid.LowPart
-                    {
-                        return Ok(surfman_adapter);
-                    }
-                }
-            }
-        }
-
-        Err(surfman::Error::NoAdapterFound)
     }
 
     fn print_wgpu_backend(wgpu_device: &wgpu::Device) {
         let backend = unsafe {
-            use slint::wgpu_30::wgpu::hal::api;
+            use slint::wgpu_30::wgpu::hal::api::{Gles, Vulkan};
 
-            #[cfg(target_os = "windows")]
-            {
-                use api::{Dx12, Gles, Vulkan};
-                if wgpu_device.as_hal::<Dx12>().is_some() {
-                    "DirectX 12"
-                } else if wgpu_device.as_hal::<Vulkan>().is_some() {
-                    "Vulkan"
-                } else if wgpu_device.as_hal::<Gles>().is_some() {
-                    "OpenGL"
-                } else {
-                    "Unknown"
-                }
-            }
-            #[cfg(target_os = "linux")]
-            {
-                use api::{Gles, Vulkan};
-                if wgpu_device.as_hal::<Vulkan>().is_some() {
-                    "Vulkan"
-                } else if wgpu_device.as_hal::<Gles>().is_some() {
-                    "OpenGL"
-                } else {
-                    "Unknown"
-                }
-            }
-            #[cfg(target_os = "android")]
-            {
-                use api::Vulkan;
-                if wgpu_device.as_hal::<Vulkan>().is_some() { "Vulkan" } else { "Unknown" }
-            }
-            #[cfg(target_vendor = "apple")]
-            {
-                use api::Metal;
-                if wgpu_device.as_hal::<Metal>().is_some() { "Metal" } else { "Unknown" }
+            if wgpu_device.as_hal::<Vulkan>().is_some() {
+                "Vulkan"
+            } else if wgpu_device.as_hal::<Gles>().is_some() {
+                "OpenGL"
+            } else {
+                "Unknown"
             }
         };
         eprintln!("[GPU] Active WGPU backend: {}", backend);

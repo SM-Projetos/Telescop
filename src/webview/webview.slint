@@ -17,18 +17,11 @@ export global WebviewLogic {
     callback reload();
 
     in property <image> web_content;
-    in-out property <string> current_url;
-
     in-out property <length> viewport_width: 1224px;
     in-out property <length> viewport_height: 768px;
-
-    out property <length> mouse_x;
-    out property <length> mouse_y;
 }
 
 export component Webview {
-
-    out property <string> current_url: WebviewLogic.current_url;
 
     public function back() {
         WebviewLogic.back();
@@ -62,7 +55,7 @@ export component Webview {
 
         TouchArea {
 
-            image := Image {
+            Image {
                 source: WebviewLogic.web_content;
                 width: 100%;
                 height: 100%;

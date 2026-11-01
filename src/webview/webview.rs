@@ -32,10 +32,9 @@ use crate::{
 /// - **UI Integration**: Bidirectional communication with Slint
 /// - **Input Handling**: Mouse, touch, and keyboard events
 ///
-/// # Platform Differences
+/// # Platform Support
 ///
-/// - **Non-Android platforms**: Uses GPU-accelerated rendering via WGPU
-/// - **Android**: Falls back to software rendering
+/// Uses Linux GPU rendering through WGPU/Surfman, with software fallback.
 pub struct WebView {}
 
 impl WebView {
@@ -51,20 +50,18 @@ impl WebView {
     ///
     /// * `app` - The Slint application instance to integrate with
     /// * `initial_url` - The URL to load when the browser starts
-    /// * `device` - WGPU device for GPU rendering (non-Android only)
-    /// * `queue` - WGPU command queue for GPU operations (non-Android only)
+    /// * `device` - WGPU device for GPU rendering
     ///
     /// # Panics
     ///
     /// Panics if:
     /// - The initial URL cannot be parsed
-    /// - GPU rendering context creation fails (on non-Android platforms)
+    /// - Software rendering context creation fails when the GPU fallback is used
     /// - Servo event loop task cannot be spawned
     pub fn new(
         app: MainWindow,
         initial_url: SharedString,
         device: slint::wgpu_30::wgpu::Device,
-        queue: slint::wgpu_30::wgpu::Queue,
     ) {
         let (waker_sender, waker_receiver) = channel::unbounded::<()>();
 
@@ -72,11 +69,9 @@ impl WebView {
             waker_sender.clone(),
             waker_receiver.clone(),
             device,
-            queue,
         ));
 
-        let state_weak = Rc::downgrade(&adapter);
-        let state = super::adapter::upgrade_adapter(&state_weak);
+        let state = adapter.clone();
 
         let rendering_adapter = Self::init_rendering_adapter(&app, state.clone());
 
@@ -100,23 +95,17 @@ impl WebView {
     fn init_rendering_adapter(
         app: &MainWindow,
         adapter: Rc<SlintServoAdapter>,
-    ) -> Rc<Box<dyn ServoRenderingAdapter>> {
+    ) -> Rc<dyn ServoRenderingAdapter> {
         let scale_factor = app.window().scale_factor();
         let width = app.global::<WebviewLogic>().get_viewport_width() * scale_factor;
         let height = app.global::<WebviewLogic>().get_viewport_height() * scale_factor;
 
         let physical_size = PhysicalSize::new(width as u32, height as u32);
 
-        let rendering_adapter = super::rendering_context::try_create_gpu_context(
+        Rc::from(super::rendering_context::try_create_gpu_context(
             adapter.wgpu_device(),
-            adapter.wgpu_queue(),
             physical_size,
-        )
-        .unwrap();
-
-        let rendering_adapter_rc = Rc::new(rendering_adapter);
-
-        rendering_adapter_rc
+        ))
     }
 
     /// Initializes and builds the Servo browser engine instance.
@@ -157,10 +146,8 @@ impl WebView {
         initial_url: SharedString,
         adapter: Rc<SlintServoAdapter>,
         servo: Servo,
-        rendering_adapter: Rc<Box<dyn ServoRenderingAdapter>>,
+        rendering_adapter: Rc<dyn ServoRenderingAdapter>,
     ) {
-        app.global::<WebviewLogic>().set_current_url(initial_url.clone());
-
         let url = Url::parse(&initial_url).expect("Failed to parse url");
 
         let delegate = Rc::new(AppDelegate::new(app, adapter.clone()));

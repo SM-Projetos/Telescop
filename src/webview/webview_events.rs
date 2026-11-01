@@ -9,13 +9,13 @@ use euclid::{Scale, Size2D};
 
 use slint::{ComponentHandle, language::ColorScheme};
 
-use servo::{DevicePixel, DevicePoint, DeviceVector2D, Scroll, Theme};
+use servo::{DevicePixel, DevicePoint, DeviceVector2D, Scroll, ServoUrl, Theme};
 
 use crate::{MainWindow, WebviewLogic, webview::SlintServoAdapter};
 
 use super::adapter::upgrade_adapter;
 use super::events_utils::{
-    convert_input_string_to_servo_url, convert_slint_key_event_to_servo_input_event,
+    convert_slint_key_event_to_servo_input_event,
     convert_slint_pointer_event_to_servo_input_event,
 };
 
@@ -41,7 +41,9 @@ impl<'a> WebViewEvents<'a> {
         self.app.global::<WebviewLogic>().on_loadUrl(move |url| {
             let adapter = upgrade_adapter(&adapter_weak);
             let webview = adapter.webview();
-            let url = convert_input_string_to_servo_url(&url);
+            let Ok(url) = ServoUrl::parse(url.trim()) else {
+                return;
+            };
             webview.load(url.into_url());
         });
     }

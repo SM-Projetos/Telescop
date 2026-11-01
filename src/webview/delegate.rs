@@ -4,7 +4,7 @@
 use slint::ComponentHandle;
 use std::rc::Rc;
 
-use crate::{MainWindow, WebviewLogic, webview::SlintServoAdapter};
+use crate::{MainWindow, webview::SlintServoAdapter};
 use servo::{WebView, WebViewDelegate};
 
 /// Servo delegate for handling browser engine callbacks.
@@ -49,12 +49,6 @@ impl WebViewDelegate for AppDelegate {
         webview.paint();
         if let Some(app) = self.app.upgrade() {
             self.adapter.update_web_content_with_latest_frame(&app);
-        }
-    }
-
-    fn notify_url_changed(&self, _webview: WebView, url: url::Url) {
-        if let Some(app) = self.app.upgrade() {
-            app.global::<WebviewLogic>().set_current_url(url.to_string().into());
         }
     }
 }

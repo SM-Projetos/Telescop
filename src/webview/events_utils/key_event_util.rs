@@ -74,7 +74,6 @@ fn key_from_text(text: &str) -> Key {
     check_key!(SlintKey::Insert, NamedKey::Insert);
     check_key!(SlintKey::PageUp, NamedKey::PageUp);
     check_key!(SlintKey::PageDown, NamedKey::PageDown);
-    check_key!(SlintKey::PageDown, NamedKey::PageDown);
 
     check_key!(SlintKey::Pause, NamedKey::Pause);
     check_key!(SlintKey::ScrollLock, NamedKey::ScrollLock);

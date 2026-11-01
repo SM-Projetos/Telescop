@@ -22,6 +22,9 @@ O texto digitado é codificado como parâmetro de URL e enviado ao endereço do 
 - **Servo 0.7** — mecanismo de navegação e renderização web incorporado.
 - **WGPU 3.0 + Surfman** — integração gráfica entre Servo e Slint.
 - **smol** — sinalização assíncrona do ciclo de eventos do Servo.
+- **OpenGL bindings gerados em `build.rs`** — usados na interoperabilidade de memória externa Vulkan no Linux.
+
+A integração de renderização está direcionada ao Linux desktop; os backends incompletos de macOS, Windows e Android não fazem parte do alvo atual.
 
 A integração é baseada no exemplo oficial [Slint + Servo](https://github.com/slint-ui/slint/tree/master/examples/servo). O Slint está fixado na revisão `5fa335de646b0b0ef22f7dc500810da78354e6df`, usada pelo exemplo para manter alinhamento com a integração WGPU 3.0 e suas dependências.
 

@@ -10,6 +10,9 @@
 - Unit tests for DuckDuckGo image-search URL construction and query encoding.
 
 ### Changed
+- Restrict the embedded rendering implementation to Linux, matching the available Vulkan backend.
+- Reduce the direct dependency set, disable image crate default features, and remove unused cross-platform build branches.
+- Simplify GPU rendering setup, remove unused browser URL/mouse state, and parse the generated DuckDuckGo navigation URL directly.
 - Replace the SearXNG search adapter with the real DuckDuckGo Images website rendered inside Telescop.
 - Replace the image gallery with an embedded browser surface.
 - Remove the SearXNG instance configuration and HTTP/JSON/HTML search implementation.
@@ -17,6 +20,8 @@
 - Update README and architecture documentation for the experimental browser-based workflow.
 
 ### Removed
+- Unused direct dependencies: gl, log, spin_on, rustls, time-now and termcolor.
+- Unused Google search fallback for arbitrary browser input and unused URL/mouse UI properties.
 - SearXNG adapter and normalized image-search model.
 - Search-result extraction, thumbnail downloads and gallery-only dependencies.
 - The SEARXNG_INSTANCE_URL runtime requirement.

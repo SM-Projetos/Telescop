@@ -37,7 +37,7 @@ pub fn upgrade_adapter(weak_ref: &Weak<SlintServoAdapter>) -> Rc<SlintServoAdapt
 /// - **State Management**: Holds Servo and WebView instances
 /// - **Event Communication**: Manages async channels for event loop waking
 /// - **Rendering Coordination**: Bridges Servo's framebuffer to Slint's display
-/// - **Resource Management**: Manages WGPU device and queue (non-Android)
+/// - **Resource Management**: Retains the WGPU device for Linux rendering
 ///
 /// # Thread Safety
 ///
@@ -59,9 +59,8 @@ pub struct SlintServoAdapter {
 pub struct SlintServoAdapterInner {
     servo: Option<Servo>,
     webview: Option<WebView>,
-    rendering_adapter: Option<Rc<Box<dyn ServoRenderingAdapter>>>,
+    rendering_adapter: Option<Rc<dyn ServoRenderingAdapter>>,
     device: wgpu::Device,
-    queue: wgpu::Queue,
 }
 
 impl SlintServoAdapter {
@@ -69,7 +68,6 @@ impl SlintServoAdapter {
         waker_sender: Sender<()>,
         waker_receiver: Receiver<()>,
         device: wgpu::Device,
-        queue: wgpu::Queue,
     ) -> Self {
         Self {
             waker_sender,
@@ -78,8 +76,7 @@ impl SlintServoAdapter {
                 servo: None,
                 webview: None,
                 rendering_adapter: None,
-                device: device,
-                queue: queue,
+                device,
             }),
         }
     }
@@ -104,10 +101,6 @@ impl SlintServoAdapter {
         self.inner().device.clone()
     }
 
-    pub fn wgpu_queue(&self) -> wgpu::Queue {
-        self.inner().queue.clone()
-    }
-
     pub fn servo(&self) -> Ref<'_, Servo> {
         Ref::map(self.inner(), |inner| inner.servo.as_ref().expect("Servo not initialized yet"))
     }
@@ -120,7 +113,7 @@ impl SlintServoAdapter {
         &self,
         servo: Servo,
         webview: WebView,
-        rendering_adapter: Rc<Box<dyn ServoRenderingAdapter>>,
+        rendering_adapter: Rc<dyn ServoRenderingAdapter>,
     ) {
         let mut inner = self.inner_mut();
         inner.servo = Some(servo);

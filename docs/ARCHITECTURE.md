@@ -16,7 +16,7 @@ Aplicativo desktop nativo para Linux que mantém a interface Slint e renderiza u
 ## Organização
 
 - `src/main.rs`: seleciona o backend WGPU, cria a janela, inicializa Servo após a criação do dispositivo gráfico e converte as pesquisas em URLs DuckDuckGo.
-- `src/lib.rs`: compila os componentes Slint e exporta o módulo de navegação.
+- `src/lib.rs`: declara o suporte atual exclusivo a Linux, compila os componentes Slint e exporta o módulo de navegação.
 - `src/webview/`: ponte de renderização, delegado Servo, sinalização do event loop e conversão dos eventos de entrada.
 - `src/webview/webview.slint`: componente visual que exibe o frame do navegador e encaminha eventos de entrada.
 - `src/webview/rendering_context/`: implementação de renderização Surfman, compartilhamento/transferência de textura Vulkan e fallback de renderização por software.
@@ -36,11 +36,13 @@ Não existe chamada ao SearXNG, à API oficial DuckDuckGo, ao endpoint interno `
 
 ## Eventos e interação
 
+O callback de navegação interpreta apenas URLs completos gerados pela aplicação; entradas inválidas são ignoradas, sem conversão automática em pesquisa do Google.
+
 A área de navegação encaminha eventos de teclado, mouse, toque e rolagem para o WebView do Servo. As ações voltar, avançar e recarregar são encaminhadas pelos métodos do WebView. O Servo sinaliza novas atividades por um `EventLoopWaker`; o adaptador usa um canal smol para acordar a tarefa local do Slint e executar `spin_event_loop`.
 
 ## Renderização
 
-O exemplo oficial integra Servo e Slint usando WGPU 3.0. O caminho GPU utiliza Surfman e exportação/importação de memória Vulkan no Linux para transportar o frame renderizado. Quando a criação do contexto GPU do Servo falha, o adaptador fornece um caminho alternativo de renderização por software e converte o framebuffer em uma imagem Slint.
+O exemplo oficial integra Servo e Slint usando WGPU 3.0. No alvo Linux, o caminho GPU utiliza Surfman e exportação/importação de memória Vulkan para transportar o frame renderizado. Quando a criação do contexto GPU do Servo falha, o adaptador fornece um caminho alternativo de renderização por software e converte o framebuffer em uma imagem Slint.
 
 ## Limitações
 
@@ -52,7 +54,7 @@ O exemplo oficial integra Servo e Slint usando WGPU 3.0. O caminho GPU utiliza S
 
 ## Construção e plataforma
 
-O protótipo é direcionado inicialmente ao Linux 64-bit. O Servo amplia sensivelmente o grafo de dependências Rust e exige ferramentas e bibliotecas nativas de compilação/renderização. Consulte a documentação atual do Servo e do Slint para preparar o ambiente da distribuição Linux.
+O protótipo é direcionado ao Linux desktop (alvo atual). Os backends de macOS, Windows e Android não estão presentes nesta implementação e não são alvos de compilação. O Servo amplia sensivelmente o grafo de dependências Rust e exige ferramentas e bibliotecas nativas de compilação/renderização. Consulte a documentação atual do Servo e do Slint para preparar o ambiente da distribuição Linux.
 
 ## Referências de implementação
 

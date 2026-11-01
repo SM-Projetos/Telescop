@@ -8,7 +8,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
     let app = MainWindow::new()?;
 
-    // Servo must be initialized after Slint has created its WGPU device and queue.
+    // Servo must be initialized after Slint has created its WGPU device.
     let initialized = Cell::new(false);
     let app_weak = app.as_weak();
 
@@ -18,7 +18,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 return;
             }
 
-            let slint::GraphicsAPI::WGPU30 { device, queue, .. } = graphics_api else {
+            let slint::GraphicsAPI::WGPU30 { device, .. } = graphics_api else {
                 panic!(
                     "Slint did not select a wgpu-30 renderer; \
                      ensure the WGPU 3.0 backend is enabled"
@@ -30,7 +30,6 @@ fn main() -> Result<(), slint::PlatformError> {
                 app,
                 "https://duckduckgo.com/?ia=images&iax=images&kl=br-pt".into(),
                 device.clone(),
-                queue.clone(),
             );
             initialized.set(true);
         })

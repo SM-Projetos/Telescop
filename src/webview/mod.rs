@@ -14,14 +14,13 @@
 //! - **`WebView`**: Main public API for creating and managing a web browser instance
 //! - **`adapter`**: Bridge between Slint UI and Servo engine, managing state and communication
 //! - **`delegate`**: Servo callback handler for frame updates and rendering notifications
-//! - **`rendering_context`**: Platform-specific rendering backends (GPU/software)
+//! - **`rendering_context`**: Linux rendering backends (GPU/software)
 //! - **`waker`**: Event loop integration for async Servo operations
 //! - **`webview_events`**: UI event handlers for user interactions (clicks, scrolls, etc.)
 //!
 //! # Platform Support
 //!
-//! - **Desktop (Linux, macOS)**: GPU-accelerated rendering via WGPU
-//! - **Android**: Software rendering fallback
+//! - **Linux desktop**: GPU-accelerated rendering via WGPU/Surfman, with software fallback
 //!
 //! # Threading Model
 //!
@@ -54,11 +53,11 @@
 //!         if !matches!(state, slint::RenderingState::RenderingSetup) || initialized.get() {
 //!             return;
 //!         }
-//!         let slint::GraphicsAPI::WGPU30 { device, queue, .. } = graphics_api else {
+//!         let slint::GraphicsAPI::WGPU30 { device, .. } = graphics_api else {
 //!             return;
 //!         };
 //!         let app = app_weak.upgrade().unwrap();
-//!         WebView::new(app, "https://example.com".into(), device.clone(), queue.clone());
+//!         WebView::new(app, "https://example.com".into(), device.clone());
 //!         initialized.set(true);
 //!     }).unwrap();
 //!
