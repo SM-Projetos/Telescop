@@ -10,20 +10,28 @@
 - Experimental DuckDuckGo Images adapter using a session VQD token and JSON endpoint.
 - Experimental Startpage Images adapter parsing the image-search HTML page.
 - Wikimedia Commons search adapter using the documented MediaWiki API.
-- Visual gallery with downloaded thumbnails, title, provider and dimensions.
-- Concurrent thumbnail downloads, limited to three requests at a time, following Wikimedia usage guidance.
-- Search status with counts and details for thumbnail download or decoding failures.
+- Openverse image search with an explicit CC0, PDM, CC BY and CC BY-SA allow-list.
+- Europeana Search API adapter with open-reuse filtering and a free personal API key read from EUROPEANA_API_KEY.
+- Cleveland Museum of Art Open Access adapter restricted to records marked CC0.
+- Visual gallery with downloaded thumbnails, title, provider, dimensions and displayed rights/attribution.
+- Concurrent thumbnail downloads, limited to three requests at a time.
+- Search status with counts and details for provider, download or decoding failures.
+- Unit tests for reusable-license filtering in Openverse, Europeana, Wikimedia Commons and Cleveland Museum of Art.
 
 ### Changed
-- Wikimedia Commons is the only integrated search provider in the default flow.
-- Removed an API-based search adapter that required paid credentials, along with its key handling, dependency, documentation and UI references.
-- Updated provider labels and footer in the Slint interface.
-- Wikimedia Commons API page results are parsed as an ID-keyed object, matching the MediaWiki response format.
+- Search Wikimedia Commons, Openverse, Europeana and Cleveland Museum of Art concurrently.
+- Keep provider failures independent so results from successful providers can still be displayed.
+- Wikimedia Commons results now require explicit reusable-rights metadata; non-commercial, no-derivatives and unknown licenses are excluded.
+- Extended ImageResult with creator, license, license URL and attribution metadata.
+- Display license and attribution alongside each gallery result.
+- Updated README and architecture documentation for the four-provider search flow and the free-only reuse policy.
 
 ### Notes
-- Yandex Images has an official API, but image-search requests are billed (currently listed at approximately US$ 7.50 per 1,000 for USD-billed customers); it is excluded to preserve the project's free-only requirement.
-- No Yandex HTML scraping adapter is included because the service may restrict automated requests under its user agreement.
+- Openverse supports free anonymous API access but applies request and pagination limits.
+- Europeana requires a free API key. Personal keys are for individual non-production use; request a project key before a public production distribution. Never embed personal credentials in source code.
+- Cleveland Museum of Art provides CC0 open-access image data through a public API without a key.
+- Europeana and Wikimedia results are accepted only when the returned rights statement matches the allow-list implemented by Telescop.
 - DuckDuckGo's undocumented image endpoint returned HTTP 403 and is not used by default.
 - Startpage's HTML structure is not a stable public API and may change without notice.
-- Openverse remains available in the code but is not used by the default search flow.
+- Yandex and Brave require paid API access and remain excluded. Bing's official image-search API is retired.
 - Filters, deduplication, full-size preview, download and favorite actions remain pending.
