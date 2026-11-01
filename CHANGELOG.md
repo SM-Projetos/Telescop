@@ -3,6 +3,9 @@
 ## [0.1.0] - Unreleased
 
 ### Added
+- Submit image searches by pressing Enter in the search field.
+- Add independent enable/disable controls for Wikimedia Commons, Openverse, Europeana and Cleveland Museum of Art.
+- Initialize Europeana as enabled only when a non-empty EUROPEANA_API_KEY is configured.
 - Initial Rust and Slint project structure.
 - First native desktop interface draft.
 - Normalized image result model.
@@ -19,6 +22,8 @@
 - Unit tests for reusable-license filtering in Openverse, Europeana, Wikimedia Commons and Cleveland Museum of Art.
 
 ### Changed
+- Invoke only the image providers selected by the user; enabled providers continue to run concurrently.
+- Show a clear status message when all image providers are disabled.
 - Search Wikimedia Commons, Openverse, Europeana and Cleveland Museum of Art concurrently.
 - Keep provider failures independent so results from successful providers can still be displayed.
 - Wikimedia Commons results now require explicit reusable-rights metadata; non-commercial, no-derivatives and unknown licenses are excluded.
