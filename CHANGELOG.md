@@ -3,20 +3,27 @@
 ## [0.1.0] - Unreleased
 
 ### Added
-- SearXNG image-search adapter using the instance Search API.
-- HTML parsing fallback for SearXNG instances that disable JSON output.
-- Configuration of the SearXNG base URL through SEARXNG_INSTANCE_URL.
-- Unit tests for SearXNG URL construction, JSON normalization, HTML parsing, URL validation and image dimensions.
+- Experimental embedded Servo web engine integrated into the Slint window through WGPU 3.0.
+- DuckDuckGo Images URL builder that safely encodes the user's current query and applies the Brazilian Portuguese region.
+- Embedded browser controls for back, forward and reload.
+- Mouse, keyboard, touch and scroll event forwarding from the Slint surface to Servo.
+- Unit tests for DuckDuckGo image-search URL construction and query encoding.
 
 ### Changed
-- Make SearXNG the only search mechanism integrated into Telescop.
-- Remove the Wikimedia Commons, Openverse, Europeana, Cleveland Museum of Art, DuckDuckGo and Startpage adapters and their UI controls.
-- Keep the existing gallery, asynchronous image processing and three-download concurrency limit.
-- Mark SearXNG image results as having unverified reuse rights unless reliable license metadata is supplied.
-- Replace provider-specific setup and documentation with SearXNG instance configuration and privacy guidance.
+- Replace the SearXNG search adapter with the real DuckDuckGo Images website rendered inside Telescop.
+- Replace the image gallery with an embedded browser surface.
+- Remove the SearXNG instance configuration and HTTP/JSON/HTML search implementation.
+- Pin Slint to the revision used by the official Servo integration example and enable its WGPU 3.0 backend.
+- Update README and architecture documentation for the experimental browser-based workflow.
+
+### Removed
+- SearXNG adapter and normalized image-search model.
+- Search-result extraction, thumbnail downloads and gallery-only dependencies.
+- The SEARXNG_INSTANCE_URL runtime requirement.
 
 ### Notes
-- Many public SearXNG instances disable JSON output. Telescop therefore falls back to parsing the HTML image-results page when needed.
-- Search terms are sent to the configured SearXNG instance and may be forwarded to the external search engines enabled by that instance's operator.
-- SearXNG image results do not uniformly provide trustworthy license metadata. Verify rights on the original source page before reuse.
-- Search filters, deduplication, full-size preview, download and favorite actions remain pending.
+- Servo + Slint integration is experimental and not production-ready.
+- The DuckDuckGo website is loaded directly; Telescop does not use DuckDuckGo's image API or undocumented image endpoint.
+- Web compatibility depends on Servo's current implementation and may differ from Firefox or Chromium.
+- The initial browser prototype does not include tabs, persistent history, bookmarks, downloads or dedicated cookie/privacy controls.
+- Servo substantially increases build time, disk use and native build requirements compared with the previous application.

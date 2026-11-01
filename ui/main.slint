@@ -1,13 +1,8 @@
-import { Button, ComboBox, LineEdit, ListView, TextEdit } from "std-widgets.slint";
+import { Button, LineEdit } from "std-widgets.slint";
+import { Webview } from "../src/webview/webview.slint";
 
-export struct GalleryItem {
-    thumbnail: image,
-    title: string,
-    provider: string,
-    dimensions: string,
-    rights: string,
-    rights_verified: bool,
-}
+export { WebviewLogic } from "../src/webview/webview.slint";
+export { Palette } from "std-widgets.slint";
 
 export component MainWindow inherits Window {
     title: "Telescop";
@@ -17,20 +12,34 @@ export component MainWindow inherits Window {
 
     callback search_requested(string);
     in-out property <string> search_query: "";
-    in-out property <string> status: "Pronto para pesquisar.";
-    in-out property <[GalleryItem]> results: [];
 
     VerticalLayout {
-        padding: 20px;
-        spacing: 16px;
+        padding: 18px;
+        spacing: 12px;
 
         HorizontalLayout {
             alignment: center;
             spacing: 12px;
-            Text { text: "Telescop"; color: #f3f4f8; font-size: 26px; font-weight: 700; }
-            Text { text: "IMAGE SEARCH"; color: #8b93a5; font-size: 11px; vertical-alignment: center; }
+
+            Text {
+                text: "Telescop";
+                color: #f3f4f8;
+                font-size: 26px;
+                font-weight: 700;
+            }
+            Text {
+                text: "DUCKDUCKGO IMAGES";
+                color: #22d3ee;
+                font-size: 11px;
+                vertical-alignment: center;
+            }
             Rectangle { background: transparent; }
-            ComboBox { width: 150px; model: ["Normal", "Anônimo", "Tor"]; current-index: 0; }
+            Text {
+                text: "Navegador integrado";
+                color: #8b93a5;
+                font-size: 11px;
+                vertical-alignment: center;
+            }
         }
 
         Rectangle { height: 1px; background: #2a3040; }
@@ -38,123 +47,62 @@ export component MainWindow inherits Window {
         HorizontalLayout {
             height: 48px;
             spacing: 8px;
+
+            Button {
+                text: "‹";
+                width: 40px;
+                clicked => { browser.back(); }
+            }
+            Button {
+                text: "›";
+                width: 40px;
+                clicked => { browser.forward(); }
+            }
+
             LineEdit {
-                placeholder-text: "Pesquise imagens...";
+                placeholder-text: "Pesquise imagens no DuckDuckGo...";
                 text <=> root.search_query;
                 accepted(text) => { root.search_requested(text); }
             }
+
             Button {
                 text: "Pesquisar";
                 clicked => { root.search_requested(root.search_query); }
             }
-        }
 
-        HorizontalLayout {
-            height: 28px;
-            spacing: 8px;
-            alignment: center;
-            Text { text: "Mecanismo de busca:"; color: #a1a8b8; }
-            Text { text: "SearXNG"; color: #22d3ee; font-weight: 600; }
-            Text {
-                text: "• Configure SEARXNG_INSTANCE_URL para escolher a instância.";
-                color: #737d91;
-                font-size: 11px;
-            }
-        }
-
-        HorizontalLayout {
-            spacing: 12px;
-            alignment: center;
-            Text { text: "Pesquisa segura"; color: #a1a8b8; }
-            ComboBox { model: ["Moderado", "Rigoroso", "Desativado"]; current-index: 0; }
-            Text { text: "Tamanho"; color: #a1a8b8; }
-            ComboBox { model: ["Qualquer", "Pequena", "Média", "Grande", "Muito grande"]; current-index: 0; }
-            Text { text: "Orientação"; color: #a1a8b8; }
-            ComboBox { model: ["Qualquer", "Horizontal", "Vertical", "Quadrada"]; current-index: 0; }
-        }
-
-        Rectangle {
-            height: 64px;
-            background: #11141c;
-            border-radius: 8px;
-            border-width: 1px;
-            border-color: #2a3040;
-
-            TextEdit {
-                width: parent.width - 20px;
-                height: parent.height - 16px;
-                x: 10px;
-                y: 8px;
-                text: root.status;
-                read-only: true;
-                font-size: 12px;
-                wrap: word-wrap;
+            Button {
+                text: "↻";
+                width: 42px;
+                clicked => { browser.reload(); }
             }
         }
 
         Rectangle {
             background: #171b25;
-            border-radius: 14px;
+            border-radius: 10px;
             border-width: 1px;
             border-color: #2a3040;
             vertical-stretch: 1;
+            clip: true;
 
-            if root.results.length == 0 : Text {
-                text: "Os resultados com miniaturas aparecerão aqui.";
-                color: #a1a8b8;
-                horizontal-alignment: center;
-                vertical-alignment: center;
-            }
-
-            ListView {
-                width: parent.width;
-                height: parent.height;
-                for result in root.results: Rectangle {
-                    width: parent.width - 24px;
-                    height: 184px;
-                    x: 12px;
-                    y: 8px;
-                    background: #1d2230;
-                    border-radius: 10px;
-                    clip: true;
-
-                    HorizontalLayout {
-                        padding: 10px;
-                        spacing: 14px;
-                        Image {
-                            source: result.thumbnail;
-                            image-fit: contain;
-                            width: 220px;
-                            height: 160px;
-                        }
-                        VerticalLayout {
-                            alignment: center;
-                            spacing: 8px;
-                            Text {
-                                text: result.title;
-                                color: #f3f4f8;
-                                font-size: 14px;
-                                font-weight: 600;
-                                wrap: word-wrap;
-                            }
-                            Text { text: result.provider; color: #22d3ee; font-size: 12px; }
-                            Text { text: result.dimensions; color: #a1a8b8; font-size: 11px; }
-                            Text {
-                                text: result.rights;
-                                color: result.rights_verified ? #a1a8b8 : #fbbf24;
-                                font-size: 10px;
-                                wrap: word-wrap;
-                            }
-                        }
-                    }
-                }
+            browser := Webview {
+                width: 100%;
+                height: 100%;
             }
         }
 
         HorizontalLayout {
-            Text { text: "Telescop • Pesquisa de imagens"; color: #737d91; font-size: 11px; }
+            Text {
+                text: "Telescop • Página real do DuckDuckGo";
+                color: #737d91;
+                font-size: 11px;
+            }
             Rectangle { background: transparent; }
-            Text { text: "Rust + Slint"; color: #737d91; font-size: 11px; }
+            Text {
+                text: "Servo + Slint";
+                color: #737d91;
+                font-size: 11px;
+            }
         }
     }
 }

@@ -1,250 +1,105 @@
-slint::include_modules!();
+use std::cell::Cell;
 
-use futures_util::stream::{self, StreamExt};
-use std::rc::Rc;
+use slint::ComponentHandle;
+use telescop::{MainWindow, WebviewLogic, webview::WebView};
 
 fn main() -> Result<(), slint::PlatformError> {
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .expect("Não foi possível iniciar o runtime assíncrono");
+    setup_slint_with_wgpu();
 
     let app = MainWindow::new()?;
-    let searxng_instance_url =
-        std::env::var("SEARXNG_INSTANCE_URL").unwrap_or_default().trim().to_owned();
-    if searxng_instance_url.is_empty() {
-        app.set_status(
-            "Configure SEARXNG_INSTANCE_URL com o endereço-base da sua instância SearXNG."
-                .into(),
-        );
-    }
 
-    let app_handle = app.as_weak();
-    let runtime_handle = runtime.handle().clone();
+    // Servo must be initialized after Slint has created its WGPU device and queue.
+    let initialized = Cell::new(false);
+    let app_weak = app.as_weak();
 
-    app.on_search_requested(move |query| {
-        let query = query.trim().to_owned();
-        if query.is_empty() {
-            return;
-        }
-        if searxng_instance_url.is_empty() {
-            if let Some(app) = app_handle.upgrade() {
-                app.set_status(
-                    "SearXNG não configurado. Defina SEARXNG_INSTANCE_URL e reinicie o Telescop."
-                        .into(),
-                );
-            }
-            return;
-        }
-        let Some(app) = app_handle.upgrade() else {
-            return;
-        };
-
-        app.set_status("Pesquisando imagens no SearXNG e carregando miniaturas...".into());
-        app.set_results(slint::ModelRc::from(Rc::new(slint::VecModel::from(
-            Vec::<GalleryItem>::new(),
-        ))));
-
-        let app_handle = app.as_weak();
-        let instance_url = searxng_instance_url.clone();
-        runtime_handle.spawn(async move {
-            let mut images = Vec::new();
-            let mut search_errors = Vec::new();
-
-            match telescop::search::searxng::search_images(&instance_url, &query, 30).await {
-                Ok(mut found) => images.append(&mut found),
-                Err(error) => search_errors.push(format!("SearXNG: {error}")),
-            }
-
-            let found_count = images.len();
-            if found_count == 0 && !search_errors.is_empty() {
-                let message = format!("A pesquisa SearXNG falhou. {}", search_errors.join(" | "));
-                let _ = slint::invoke_from_event_loop(move || {
-                    if let Some(app) = app_handle.upgrade() {
-                        app.set_status(message.into());
-                    }
-                });
+    app.window()
+        .set_rendering_notifier(move |state, graphics_api| {
+            if !matches!(state, slint::RenderingState::RenderingSetup) || initialized.get() {
                 return;
             }
 
-            let client = match reqwest::Client::builder()
-                .user_agent("Telescop/0.1.0 (https://github.com/SM-Projetos/Telescop)")
-                .timeout(std::time::Duration::from_secs(20))
-                .build()
-            {
-                Ok(client) => client,
-                Err(error) => {
-                    let message = format!(
-                        "Não foi possível preparar o carregamento das miniaturas: {error}"
-                    );
-                    let _ = slint::invoke_from_event_loop(move || {
-                        if let Some(app) = app_handle.upgrade() {
-                            app.set_status(message.into());
-                        }
-                    });
-                    return;
-                }
+            let slint::GraphicsAPI::WGPU30 { device, queue, .. } = graphics_api else {
+                panic!(
+                    "Slint did not select a wgpu-30 renderer; \
+                     ensure the WGPU 3.0 backend is enabled"
+                );
             };
 
-            let download_results = stream::iter(images.into_iter().map(|item| {
-                let client = client.clone();
-                async move {
-                    let title = item.title.unwrap_or_else(|| "Imagem sem título".into());
-                    let provider = item.provider;
-                    let context = format!("{provider}: {title}");
-                    let url = item
-                        .thumbnail_url
-                        .as_deref()
-                        .unwrap_or(&item.image_url)
-                        .to_owned();
+            let app = app_weak.upgrade().expect("Application closed before Servo initialization");
+            WebView::new(
+                app,
+                "https://duckduckgo.com/?ia=images&iax=images&kl=br-pt".into(),
+                device.clone(),
+                queue.clone(),
+            );
+            initialized.set(true);
+        })
+        .expect("Failed to install Slint rendering notifier");
 
-                    let response = match client.get(&url).send().await {
-                        Ok(response) => response,
-                        Err(error) => return Some(Err(format!("{context}: {error}"))),
-                    };
-                    if !response.status().is_success() {
-                        return Some(Err(format!("{context}: HTTP {}", response.status())));
-                    }
+    let app_weak = app.as_weak();
+    app.on_search_requested(move |query| {
+        let query = query.trim();
+        if query.is_empty() {
+            return;
+        }
 
-                    let bytes = match response.bytes().await {
-                        Ok(bytes) => bytes,
-                        Err(error) => {
-                            return Some(Err(format!("{context}: falha ao ler imagem: {error}")));
-                        }
-                    };
-                    let decoded = match image::load_from_memory(&bytes) {
-                        Ok(decoded) => decoded,
-                        Err(error) => {
-                            return Some(Err(format!(
-                                "{context}: formato de imagem não suportado: {error}"
-                            )));
-                        }
-                    };
+        let Some(app) = app_weak.upgrade() else {
+            return;
+        };
 
-                    let (original_width, original_height) = (decoded.width(), decoded.height());
-                    let thumbnail = decoded.thumbnail(320, 220).to_rgba8();
-                    let (thumb_width, thumb_height) = thumbnail.dimensions();
-                    let dimensions = match (item.width, item.height) {
-                        (Some(width), Some(height)) => format!("{width} × {height}"),
-                        _ => format!("{original_width} × {original_height}"),
-                    };
-
-                    let rights_verified = item
-                        .license
-                        .as_deref()
-                        .is_some_and(|value| !value.trim().is_empty());
-                    let license = item
-                        .license
-                        .unwrap_or_else(|| "Licença não verificada".into());
-                    let credit = item
-                        .attribution
-                        .or(item.creator)
-                        .filter(|value| !value.trim().is_empty())
-                        .unwrap_or_else(|| "Consulte a página de origem".into());
-                    let rights = format!("{license} • {credit}");
-
-                    Some(Ok((
-                        thumbnail.into_raw(),
-                        thumb_width,
-                        thumb_height,
-                        title,
-                        provider,
-                        dimensions,
-                        rights,
-                        rights_verified,
-                    )))
-                }
-            }))
-            .buffer_unordered(3)
-            .filter_map(|result| async move { result })
-            .collect::<Vec<_>>()
-            .await;
-
-            let _ = slint::invoke_from_event_loop(move || {
-                let Some(app) = app_handle.upgrade() else {
-                    return;
-                };
-
-                let mut cards = Vec::new();
-                let mut download_errors = Vec::new();
-                for result in download_results {
-                    match result {
-                        Ok(card) => cards.push(card),
-                        Err(error) => download_errors.push(error),
-                    }
-                }
-
-                if cards.is_empty() {
-                    let mut details = search_errors;
-                    details.extend(download_errors.into_iter().take(3));
-                    let base = if found_count == 0 {
-                        "Nenhum resultado de imagem foi encontrado.".to_owned()
-                    } else {
-                        format!(
-                            "{found_count} resultado(s) encontrados, mas nenhuma miniatura foi carregada."
-                        )
-                    };
-                    let message = if details.is_empty() {
-                        base
-                    } else {
-                        format!("{base} {}", details.join(" | "))
-                    };
-                    app.set_status(message.into());
-                    return;
-                }
-
-                let gallery_items = cards
-                    .into_iter()
-                    .map(
-                        |(
-                            pixels,
-                            width,
-                            height,
-                            title,
-                            provider,
-                            dimensions,
-                            rights,
-                            rights_verified,
-                        )| {
-                            let buffer =
-                                slint::SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(
-                                    &pixels, width, height,
-                                );
-                            GalleryItem {
-                                thumbnail: slint::Image::from_rgba8(buffer),
-                                title: title.into(),
-                                provider: provider.into(),
-                                dimensions: dimensions.into(),
-                                rights: rights.into(),
-                                rights_verified,
-                            }
-                        },
-                    )
-                    .collect::<Vec<_>>();
-
-                let loaded_count = gallery_items.len();
-                app.set_results(slint::ModelRc::from(Rc::new(slint::VecModel::from(
-                    gallery_items,
-                ))));
-
-                let failed_count = download_errors.len();
-                let mut status = if failed_count == 0 {
-                    format!("{loaded_count} imagem(ns) carregada(s) na galeria.")
-                } else {
-                    let examples = download_errors.into_iter().take(2).collect::<Vec<_>>();
-                    format!(
-                        "{loaded_count} de {found_count} miniatura(s) carregada(s); {failed_count} falha(s). {}",
-                        examples.join(" | ")
-                    )
-                };
-                if !search_errors.is_empty() {
-                    status.push_str(" Fonte com falha: ");
-                    status.push_str(&search_errors.join(" | "));
-                }
-                app.set_status(status.into());
-            });
-        });
+        let url = duckduckgo_images_url(query);
+        app.global::<WebviewLogic>().invoke_loadUrl(url.into());
     });
 
     app.run()
+}
+
+fn duckduckgo_images_url(query: &str) -> String {
+    let mut parameters = url::form_urlencoded::Serializer::new(String::new());
+    parameters
+        .append_pair("q", query)
+        .append_pair("ia", "images")
+        .append_pair("iax", "images")
+        .append_pair("kl", "br-pt");
+
+    format!("https://duckduckgo.com/?{}", parameters.finish())
+}
+
+fn setup_slint_with_wgpu() {
+    use slint::wgpu_30::{WGPUConfiguration, WGPUSettings};
+
+    let settings = WGPUSettings::default();
+
+    slint::BackendSelector::new()
+        .require_wgpu_30(WGPUConfiguration::Automatic(settings))
+        .select()
+        .expect(
+            "Failed to create Slint WGPU backend. Check that the system has a supported GPU \
+             driver and Vulkan/OpenGL runtime.",
+        );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn builds_duckduckgo_images_url_from_current_query() {
+        let url = url::Url::parse(&duckduckgo_images_url("carro de corrida")).unwrap();
+        let parameters = url.query_pairs().collect::<std::collections::HashMap<_, _>>();
+
+        assert_eq!(url.host_str(), Some("duckduckgo.com"));
+        assert_eq!(parameters.get("q").map(|value| value.as_ref()), Some("carro de corrida"));
+        assert_eq!(parameters.get("ia").map(|value| value.as_ref()), Some("images"));
+        assert_eq!(parameters.get("iax").map(|value| value.as_ref()), Some("images"));
+        assert_eq!(parameters.get("kl").map(|value| value.as_ref()), Some("br-pt"));
+    }
+
+    #[test]
+    fn safely_encodes_special_characters_and_accents() {
+        let url = url::Url::parse(&duckduckgo_images_url("árvore & céu")).unwrap();
+        let query = url.query_pairs().find(|(key, _)| key == "q").unwrap();
+
+        assert_eq!(query.1, "árvore & céu");
+    }
 }
