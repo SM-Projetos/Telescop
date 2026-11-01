@@ -6,6 +6,7 @@ export struct GalleryItem {
     provider: string,
     dimensions: string,
     rights: string,
+    rights_verified: bool,
 }
 
 export component MainWindow inherits Window {
@@ -20,6 +21,7 @@ export component MainWindow inherits Window {
     in-out property <bool> use_openverse: true;
     in-out property <bool> use_europeana: false;
     in-out property <bool> use_cleveland: true;
+    in-out property <bool> use_duckduckgo: false;
     in-out property <string> status: "Pronto para pesquisar.";
     in-out property <[GalleryItem]> results: [];
 
@@ -61,6 +63,7 @@ export component MainWindow inherits Window {
             CheckBox { text: "Openverse"; checked <=> root.use_openverse; }
             CheckBox { text: "Europeana"; checked <=> root.use_europeana; }
             CheckBox { text: "Cleveland Museum"; checked <=> root.use_cleveland; }
+            CheckBox { text: "DuckDuckGo"; checked <=> root.use_duckduckgo; }
         }
 
         HorizontalLayout {
@@ -142,7 +145,7 @@ export component MainWindow inherits Window {
                             Text { text: result.dimensions; color: #a1a8b8; font-size: 11px; }
                             Text {
                                 text: result.rights;
-                                color: #a1a8b8;
+                                color: if result.rights_verified { #a1a8b8 } else { #fbbf24 };
                                 font-size: 10px;
                                 wrap: word-wrap;
                             }

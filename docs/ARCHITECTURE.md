@@ -25,11 +25,11 @@ Todos os provedores produzem um ImageResult comum, contendo URL da imagem, minia
 
 ## Provedores integrados
 
-As buscas do Wikimedia Commons, Openverse, Europeana e Cleveland Museum of Art são executadas em paralelo. A falha de uma fonte não cancela as demais. O núcleo reúne os resultados e processa miniaturas com concorrência limitada a três downloads.
+As buscas dos provedores selecionados — Wikimedia Commons, Openverse, Europeana, Cleveland Museum of Art e DuckDuckGo — são executadas em paralelo. A falha de uma fonte não cancela as demais. O núcleo reúne os resultados e processa miniaturas com concorrência limitada a três downloads.
 
 ### Política de direitos
 
-A pesquisa padrão só aceita direitos identificados como:
+Os provedores com metadados de direitos confiáveis só aceitam direitos identificados como:
 
 - CC0;
 - Public Domain Mark (PDM) ou Domínio Público identificado pela fonte;
@@ -39,6 +39,8 @@ A pesquisa padrão só aceita direitos identificados como:
 Licenças NC (uso não comercial), ND (sem derivações), direitos reservados e registros sem identificação confiável são excluídos.
 
 O adaptador do Wikimedia Commons solicita extmetadata e verifica LicenseUrl/LicenseShortName. O Openverse usa uma lista explícita de licenças permitidas na consulta e valida a licença retornada. A Europeana filtra por reusability=open e ainda valida a URL de direitos do registro, aceitando apenas CC0, PDM, CC BY e CC BY-SA. O Cleveland Museum consulta somente cc0=1 e confirma share_license_status=CC0 antes de criar o resultado.
+
+O DuckDuckGo é uma exceção experimental: a página HTML é solicitada com os parâmetros q, iar=images e t=h_; o adaptador extrai o token VQD e consulta o endpoint interno i.js para receber JSON. Não há API pública documentada nem metadados de licença confiáveis. Esses resultados são apresentados com o rótulo visual amarelo "Licença não verificada" e não são considerados liberados para reutilização.
 
 A API da Europeana exige chave gratuita. O aplicativo lê a chave pessoal a partir de EUROPEANA_API_KEY, sem armazená-la no repositório. Chaves pessoais destinam-se a uso individual não produtivo; uma distribuição pública em produção deve utilizar chave de projeto concedida para esse fim.
 

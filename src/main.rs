@@ -32,8 +32,9 @@ fn main() -> Result<(), slint::PlatformError> {
         let use_openverse = app.get_use_openverse();
         let use_europeana = app.get_use_europeana();
         let use_cleveland = app.get_use_cleveland();
+        let use_duckduckgo = app.get_use_duckduckgo();
 
-        if !use_commons && !use_openverse && !use_europeana && !use_cleveland {
+        if !use_commons && !use_openverse && !use_europeana && !use_cleveland && !use_duckduckgo {
             app.set_status("Selecione pelo menos um buscador para pesquisar.".into());
             return;
         }
@@ -74,12 +75,20 @@ fn main() -> Result<(), slint::PlatformError> {
                     None
                 }
             };
+            let duckduckgo_search = async {
+                if use_duckduckgo {
+                    Some(telescop::search::duckduckgo::search_images(&query, 30).await)
+                } else {
+                    None
+                }
+            };
 
-            let (commons, openverse, europeana, cleveland) = tokio::join!(
+            let (commons, openverse, europeana, cleveland, duckduckgo) = tokio::join!(
                 commons_search,
                 openverse_search,
                 europeana_search,
                 cleveland_search,
+                duckduckgo_search,
             );
 
             let mut images = Vec::new();
@@ -90,6 +99,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 ("Openverse", openverse),
                 ("Europeana", europeana),
                 ("Cleveland Museum of Art", cleveland),
+                ("DuckDuckGo", duckduckgo),
             ] {
                 let Some(result) = result else {
                     continue;
@@ -174,7 +184,15 @@ fn main() -> Result<(), slint::PlatformError> {
                         _ => format!("{original_width} × {original_height}"),
                     };
 
-                    let license = item.license.unwrap_or_else(|| "Licença não informada".into());
+                    let rights_verified = item.license.as_deref()
+                        .is_some_and(|value| !value.trim().is_empty());
+                    let license = item.license.unwrap_or_else(|| {
+                        if provider == "DuckDuckGo" {
+                            "Licença não verificada".into()
+                        } else {
+                            "Licença não informada".into()
+                        }
+                    });
                     let credit = item.attribution.or(item.creator)
                         .filter(|value| !value.trim().is_empty())
                         .unwrap_or_else(|| "Consulte a página de origem".into());
@@ -188,6 +206,7 @@ fn main() -> Result<(), slint::PlatformError> {
                         provider,
                         dimensions,
                         rights,
+                        rights_verified,
                     )))
                 }
             }))
@@ -231,7 +250,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
                 let gallery_items = cards
                     .into_iter()
-                    .map(|(pixels, width, height, title, provider, dimensions, rights)| {
+                    .map(|(pixels, width, height, title, provider, dimensions, rights, rights_verified)| {
                         let buffer = slint::SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(
                             &pixels, width, height,
                         );
@@ -241,6 +260,7 @@ fn main() -> Result<(), slint::PlatformError> {
                             provider: provider.into(),
                             dimensions: dimensions.into(),
                             rights: rights.into(),
+                            rights_verified,
                         }
                     })
                     .collect::<Vec<_>>();
