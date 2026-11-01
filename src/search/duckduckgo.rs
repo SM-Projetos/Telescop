@@ -85,7 +85,7 @@ pub async fn search_images(
         .get(build_image_url(query, &token))
         .header(reqwest::header::ACCEPT, "*/*")
         .header(reqwest::header::REFERER, PAGE_URL)
-        .header(reqwest::header::COOKIE, "ad=pt-br; ah=br-pt; l=br-pt")
+        .header(reqwest::header::COOKIE, "ad=pt_BR; ah=br-pt; l=br-pt")
         .send()
         .await
         .map_err(|error| {
