@@ -1,4 +1,4 @@
-import { Button, ComboBox, LineEdit, ListView, TextEdit } from "std-widgets.slint";
+import { Button, CheckBox, ComboBox, LineEdit, ListView, TextEdit } from "std-widgets.slint";
 
 export struct GalleryItem {
     thumbnail: image,
@@ -16,6 +16,10 @@ export component MainWindow inherits Window {
 
     callback search_requested(string);
     in-out property <string> search_query: "";
+    in-out property <bool> use_commons: true;
+    in-out property <bool> use_openverse: true;
+    in-out property <bool> use_europeana: false;
+    in-out property <bool> use_cleveland: true;
     in-out property <string> status: "Pronto para pesquisar.";
     in-out property <[GalleryItem]> results: [];
 
@@ -37,11 +41,26 @@ export component MainWindow inherits Window {
         HorizontalLayout {
             height: 48px;
             spacing: 8px;
-            LineEdit { placeholder-text: "Pesquise imagens..."; text <=> root.search_query; }
+            LineEdit {
+                placeholder-text: "Pesquise imagens...";
+                text <=> root.search_query;
+                accepted(text) => { root.search_requested(text); }
+            }
             Button {
                 text: "Pesquisar";
                 clicked => { root.search_requested(root.search_query); }
             }
+        }
+
+        HorizontalLayout {
+            height: 32px;
+            spacing: 16px;
+            alignment: center;
+            Text { text: "Buscadores:"; color: #a1a8b8; }
+            CheckBox { text: "Wikimedia Commons"; checked <=> root.use_commons; }
+            CheckBox { text: "Openverse"; checked <=> root.use_openverse; }
+            CheckBox { text: "Europeana"; checked <=> root.use_europeana; }
+            CheckBox { text: "Cleveland Museum"; checked <=> root.use_cleveland; }
         }
 
         HorizontalLayout {
