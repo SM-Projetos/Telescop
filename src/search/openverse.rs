@@ -56,7 +56,7 @@ pub async fn search_images(
         .timeout(Duration::from_secs(20))
         .build()?;
 
-    let page_size = limit.clamp(1, 50).to_string();
+    let page_size = limit.clamp(1, 20).to_string();
     let response = client
         .get(API_URL)
         .query(&[
@@ -76,7 +76,7 @@ pub async fn search_images(
         .results
         .into_iter()
         .filter_map(to_image_result)
-        .take(limit.clamp(1, 50) as usize)
+        .take(limit.clamp(1, 20) as usize)
         .collect())
 }
 
