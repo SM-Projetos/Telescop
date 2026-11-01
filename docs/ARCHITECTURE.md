@@ -12,32 +12,49 @@ Aplicativo desktop nativo para pesquisar imagens em diferentes fontes e reunir o
 
 ## Organização
 
-- `src/main.rs`: inicialização da aplicação e integração inicial com a UI.
-- `src/lib.rs`: módulos da biblioteca da aplicação.
-- `src/search/`: modelos, coordenação de buscas e adaptadores de provedores.
-- `src/privacy/`: políticas de conexão, proxy e Tor (etapa futura).
-- `ui/`: componentes e telas Slint.
-- `docs/`: decisões e documentação técnica.
+- src/main.rs: inicialização da aplicação, coordenação das buscas e integração com a UI.
+- src/lib.rs: módulos da biblioteca da aplicação.
+- src/search/: modelo comum e adaptadores independentes por provedor.
+- src/search/model.rs: URLs, dimensões, provedor e metadados de direitos/atribuição.
+- ui/: componentes e telas Slint.
+- docs/: decisões e documentação técnica.
 
 ## Modelo de resultado
 
-Todos os provedores deverão produzir um `ImageResult` comum, contendo URL da imagem, miniatura opcional, título, página de origem, provedor e dimensões conhecidas.
+Todos os provedores produzem um ImageResult comum, contendo URL da imagem, miniatura opcional, título, página de origem, provedor, dimensões, autor, licença, URL da licença e atribuição.
 
-## Adaptadores de busca
+## Provedores integrados
 
-Cada fonte será isolada em um adaptador independente. O núcleo deverá coordenar consultas, receber resultados progressivamente, normalizar dados e remover duplicatas.
+As buscas do Wikimedia Commons, Openverse, Europeana e Cleveland Museum of Art são executadas em paralelo. A falha de uma fonte não cancela as demais. O núcleo reúne os resultados e processa miniaturas com concorrência limitada a três downloads.
 
-Wikimedia Commons é o provedor de pesquisa integrado e utiliza a API documentada do MediaWiki para pesquisar arquivos e solicitar URLs de miniaturas. Os resultados são normalizados para `ImageResult`; os downloads das miniaturas ocorrem em paralelo, com limite de três operações simultâneas. Falhas de rede, status HTTP e formatos não suportados são informados no status da aplicação. Yandex Images possui uma API oficial, mas a pesquisa de imagens é tarifada (a tabela consultada lista aproximadamente US$ 7,50 por mil consultas para clientes faturados em dólar) e está fora do escopo gratuito do projeto. O acordo de uso do Yandex também reserva à empresa o direito de restringir requisições automatizadas; por isso, não será usado scraping HTML para contornar a API. DuckDuckGo e Startpage permanecem como adaptadores experimentais fora do fluxo padrão: o endpoint interno do DuckDuckGo retornou HTTP 403, e o parser HTML do Startpage depende de uma estrutura que pode mudar. Openverse permanece implementado, mas fora do fluxo padrão até resolver a autenticação. Não presumir que scraping seja permitido ou sustentável.
+### Política de direitos
+
+A pesquisa padrão só aceita direitos identificados como:
+
+- CC0;
+- Public Domain Mark (PDM) ou Domínio Público identificado pela fonte;
+- CC BY;
+- CC BY-SA.
+
+Licenças NC (uso não comercial), ND (sem derivações), direitos reservados e registros sem identificação confiável são excluídos.
+
+O adaptador do Wikimedia Commons solicita extmetadata e verifica LicenseUrl/LicenseShortName. O Openverse usa uma lista explícita de licenças permitidas na consulta e valida a licença retornada. A Europeana filtra por reusability=open e ainda valida a URL de direitos do registro, aceitando apenas CC0, PDM, CC BY e CC BY-SA. O Cleveland Museum consulta somente cc0=1 e confirma share_license_status=CC0 antes de criar o resultado.
+
+A API da Europeana exige chave gratuita. O aplicativo lê a chave pessoal a partir de EUROPEANA_API_KEY, sem armazená-la no repositório. Chaves pessoais destinam-se a uso individual não produtivo; uma distribuição pública em produção deve utilizar chave de projeto concedida para esse fim.
+
+## Falhas e downloads
+
+Falhas de rede ou respostas inválidas de um provedor são registradas sem impedir resultados das outras fontes. Os downloads de miniaturas são limitados a três operações simultâneas. Erros HTTP e de decodificação são mostrados no status da aplicação.
 
 ## Privacidade
 
-Os modos Normal, Anônimo, Tor e Proxy serão implementados com comportamento explícito. Falhas de Tor ou proxy não poderão provocar fallback silencioso para conexão direta. A aplicação não deverá prometer anonimato absoluto.
+Os modos Normal, Anônimo, Tor e Proxy ainda não estão implementados funcionalmente. Falhas de Tor ou proxy não poderão provocar fallback silencioso para conexão direta. A aplicação não deverá prometer anonimato absoluto.
 
 ## Etapas
 
 1. Fundação Rust + Slint e identidade visual.
-2. Contratos dos provedores e motor assíncrono.
-3. Primeiro adaptador experimental.
-4. Galeria, deduplicação, dimensões e filtros.
+2. Adaptadores Wikimedia Commons, Openverse, Europeana e Cleveland Museum of Art.
+3. Modelo comum com metadados de direitos e atribuição.
+4. Galeria, deduplicação, filtros e carregamento progressivo.
 5. Fontes adicionais e recursos de privacidade.
 6. Testes, documentação e empacotamento.
