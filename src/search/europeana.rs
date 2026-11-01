@@ -72,8 +72,8 @@ pub async fn search_images(
     let rows = limit.clamp(1, 50).to_string();
     let response = client
         .get(API_URL)
+        .header("X-Api-Key", api_key)
         .query(&[
-            ("wskey", api_key),
             ("query", query),
             ("qf", "TYPE:IMAGE"),
             ("reusability", "open"),
