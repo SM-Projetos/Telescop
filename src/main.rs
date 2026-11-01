@@ -22,21 +22,50 @@ fn main() -> Result<(), slint::PlatformError> {
             return;
         };
 
-        app.set_status("Pesquisando imagens e carregando miniaturas...".into());
+        app.set_status("Pesquisando em quatro fontes e carregando miniaturas...".into());
         app.set_results(slint::ModelRc::from(Rc::new(slint::VecModel::from(
             Vec::<GalleryItem>::new(),
         ))));
 
         let app_handle = app.as_weak();
         runtime_handle.spawn(async move {
+            // All providers run concurrently. A failure in one provider does not
+            // prevent successful results from the other sources from appearing.
+            let (commons, openverse, europeana, cleveland) = tokio::join!(
+                telescop::search::commons::search_images(&query, 30),
+                telescop::search::openverse::search_images(&query, 30),
+                telescop::search::europeana::search_images(&query, 30),
+                telescop::search::cleveland::search_images(&query, 30),
+            );
+
             let mut images = Vec::new();
             let mut search_errors = Vec::new();
 
-            match telescop::search::commons::search_images(&query, 30).await {
-                Ok(mut found) => images.append(&mut found),
-                Err(error) => search_errors.push(format!("Wikimedia Commons: {error}")),
+            for (provider, result) in [
+                ("Wikimedia Commons", commons),
+                ("Openverse", openverse),
+                ("Europeana", europeana),
+                ("Cleveland Museum of Art", cleveland),
+            ] {
+                match result {
+                    Ok(mut found) => images.append(&mut found),
+                    Err(error) => search_errors.push(format!("{provider}: {error}")),
+                }
             }
             let found_count = images.len();
+
+            if found_count == 0 && !search_errors.is_empty() {
+                let message = format!(
+                    "Nenhum provedor retornou resultados. {}",
+                    search_errors.join(" | ")
+                );
+                let _ = slint::invoke_from_event_loop(move || {
+                    if let Some(app) = app_handle.upgrade() {
+                        app.set_status(message.into());
+                    }
+                });
+                return;
+            }
 
             let client = match reqwest::Client::builder()
                 .user_agent("Telescop/0.1.0 (https://github.com/SM-Projetos/Telescop)")
@@ -98,6 +127,12 @@ fn main() -> Result<(), slint::PlatformError> {
                         _ => format!("{original_width} × {original_height}"),
                     };
 
+                    let license = item.license.unwrap_or_else(|| "Licença não informada".into());
+                    let credit = item.attribution.or(item.creator)
+                        .filter(|value| !value.trim().is_empty())
+                        .unwrap_or_else(|| "Consulte a página de origem".into());
+                    let rights = format!("{license} • {credit}");
+
                     Some(Ok((
                         thumbnail.into_raw(),
                         thumb_width,
@@ -105,6 +140,7 @@ fn main() -> Result<(), slint::PlatformError> {
                         title,
                         provider,
                         dimensions,
+                        rights,
                     )))
                 }
             }))
@@ -148,7 +184,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
                 let gallery_items = cards
                     .into_iter()
-                    .map(|(pixels, width, height, title, provider, dimensions)| {
+                    .map(|(pixels, width, height, title, provider, dimensions, rights)| {
                         let buffer = slint::SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(
                             &pixels, width, height,
                         );
@@ -157,6 +193,7 @@ fn main() -> Result<(), slint::PlatformError> {
                             title: title.into(),
                             provider: provider.into(),
                             dimensions: dimensions.into(),
+                            rights: rights.into(),
                         }
                     })
                     .collect::<Vec<_>>();
@@ -177,7 +214,7 @@ fn main() -> Result<(), slint::PlatformError> {
                     )
                 };
                 if !search_errors.is_empty() {
-                    status.push_str(" ");
+                    status.push_str(" Fontes com falha: ");
                     status.push_str(&search_errors.join(" | "));
                 }
                 app.set_status(status.into());
