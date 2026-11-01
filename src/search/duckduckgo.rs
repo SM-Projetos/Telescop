@@ -212,7 +212,7 @@ fn http_status_error(
 }
 
 fn extract_vqd(html: &str) -> Option<String> {
-    let (_, tail) = html.split_once("vqd=\\"")?;
+    let (_, tail) = html.split_once("vqd=\"")?;
     let (value, _) = tail.split_once('"')?;
     (!value.trim().is_empty()).then(|| value.to_owned())
 }
