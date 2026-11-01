@@ -10,6 +10,12 @@ fn main() -> Result<(), slint::PlatformError> {
         .expect("Não foi possível iniciar o runtime assíncrono");
 
     let app = MainWindow::new()?;
+    // Europeana starts enabled only when the user has configured a non-empty key.
+    let europeana_key_configured = matches!(
+        std::env::var("EUROPEANA_API_KEY"),
+        Ok(key) if !key.trim().is_empty()
+    );
+    app.set_use_europeana(europeana_key_configured);
     let app_handle = app.as_weak();
     let runtime_handle = runtime.handle().clone();
 
@@ -22,20 +28,58 @@ fn main() -> Result<(), slint::PlatformError> {
             return;
         };
 
-        app.set_status("Pesquisando em quatro fontes e carregando miniaturas...".into());
+        let use_commons = app.get_use_commons();
+        let use_openverse = app.get_use_openverse();
+        let use_europeana = app.get_use_europeana();
+        let use_cleveland = app.get_use_cleveland();
+
+        if !use_commons && !use_openverse && !use_europeana && !use_cleveland {
+            app.set_status("Selecione pelo menos um buscador para pesquisar.".into());
+            return;
+        }
+
+        app.set_status("Pesquisando nas fontes selecionadas e carregando miniaturas...".into());
         app.set_results(slint::ModelRc::from(Rc::new(slint::VecModel::from(
             Vec::<GalleryItem>::new(),
         ))));
 
         let app_handle = app.as_weak();
         runtime_handle.spawn(async move {
-            // All providers run concurrently. A failure in one provider does not
-            // prevent successful results from the other sources from appearing.
+            // Disabled providers are not called. Enabled providers run concurrently.
+            let commons_search = async {
+                if use_commons {
+                    Some(telescop::search::commons::search_images(&query, 30).await)
+                } else {
+                    None
+                }
+            };
+            let openverse_search = async {
+                if use_openverse {
+                    Some(telescop::search::openverse::search_images(&query, 30).await)
+                } else {
+                    None
+                }
+            };
+            let europeana_search = async {
+                if use_europeana {
+                    Some(telescop::search::europeana::search_images(&query, 30).await)
+                } else {
+                    None
+                }
+            };
+            let cleveland_search = async {
+                if use_cleveland {
+                    Some(telescop::search::cleveland::search_images(&query, 30).await)
+                } else {
+                    None
+                }
+            };
+
             let (commons, openverse, europeana, cleveland) = tokio::join!(
-                telescop::search::commons::search_images(&query, 30),
-                telescop::search::openverse::search_images(&query, 30),
-                telescop::search::europeana::search_images(&query, 30),
-                telescop::search::cleveland::search_images(&query, 30),
+                commons_search,
+                openverse_search,
+                europeana_search,
+                cleveland_search,
             );
 
             let mut images = Vec::new();
@@ -47,6 +91,9 @@ fn main() -> Result<(), slint::PlatformError> {
                 ("Europeana", europeana),
                 ("Cleveland Museum of Art", cleveland),
             ] {
+                let Some(result) = result else {
+                    continue;
+                };
                 match result {
                     Ok(mut found) => images.append(&mut found),
                     Err(error) => search_errors.push(format!("{provider}: {error}")),
