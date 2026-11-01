@@ -1,4 +1,4 @@
-import { Button, CheckBox, ComboBox, LineEdit, ListView, TextEdit } from "std-widgets.slint";
+import { Button, ComboBox, LineEdit, ListView, TextEdit } from "std-widgets.slint";
 
 export struct GalleryItem {
     thumbnail: image,
@@ -17,11 +17,6 @@ export component MainWindow inherits Window {
 
     callback search_requested(string);
     in-out property <string> search_query: "";
-    in-out property <bool> use_commons: true;
-    in-out property <bool> use_openverse: true;
-    in-out property <bool> use_europeana: false;
-    in-out property <bool> use_cleveland: true;
-    in-out property <bool> use_duckduckgo: false;
     in-out property <string> status: "Pronto para pesquisar.";
     in-out property <[GalleryItem]> results: [];
 
@@ -55,15 +50,16 @@ export component MainWindow inherits Window {
         }
 
         HorizontalLayout {
-            height: 32px;
-            spacing: 16px;
+            height: 28px;
+            spacing: 8px;
             alignment: center;
-            Text { text: "Buscadores:"; color: #a1a8b8; }
-            CheckBox { text: "Wikimedia Commons"; checked <=> root.use_commons; }
-            CheckBox { text: "Openverse"; checked <=> root.use_openverse; }
-            CheckBox { text: "Europeana"; checked <=> root.use_europeana; }
-            CheckBox { text: "Cleveland Museum"; checked <=> root.use_cleveland; }
-            CheckBox { text: "DuckDuckGo"; checked <=> root.use_duckduckgo; }
+            Text { text: "Mecanismo de busca:"; color: #a1a8b8; }
+            Text { text: "SearXNG"; color: #22d3ee; font-weight: 600; }
+            Text {
+                text: "• Configure SEARXNG_INSTANCE_URL para escolher a instância.";
+                color: #737d91;
+                font-size: 11px;
+            }
         }
 
         HorizontalLayout {

@@ -10,12 +10,15 @@ fn main() -> Result<(), slint::PlatformError> {
         .expect("Não foi possível iniciar o runtime assíncrono");
 
     let app = MainWindow::new()?;
-    // Europeana starts enabled only when the user has configured a non-empty key.
-    let europeana_key_configured = matches!(
-        std::env::var("EUROPEANA_API_KEY"),
-        Ok(key) if !key.trim().is_empty()
-    );
-    app.set_use_europeana(europeana_key_configured);
+    let searxng_instance_url =
+        std::env::var("SEARXNG_INSTANCE_URL").unwrap_or_default().trim().to_owned();
+    if searxng_instance_url.is_empty() {
+        app.set_status(
+            "Configure SEARXNG_INSTANCE_URL com o endereço-base da sua instância SearXNG."
+                .into(),
+        );
+    }
+
     let app_handle = app.as_weak();
     let runtime_handle = runtime.handle().clone();
 
@@ -24,98 +27,38 @@ fn main() -> Result<(), slint::PlatformError> {
         if query.is_empty() {
             return;
         }
+        if searxng_instance_url.is_empty() {
+            if let Some(app) = app_handle.upgrade() {
+                app.set_status(
+                    "SearXNG não configurado. Defina SEARXNG_INSTANCE_URL e reinicie o Telescop."
+                        .into(),
+                );
+            }
+            return;
+        }
         let Some(app) = app_handle.upgrade() else {
             return;
         };
 
-        let use_commons = app.get_use_commons();
-        let use_openverse = app.get_use_openverse();
-        let use_europeana = app.get_use_europeana();
-        let use_cleveland = app.get_use_cleveland();
-        let use_duckduckgo = app.get_use_duckduckgo();
-
-        if !use_commons && !use_openverse && !use_europeana && !use_cleveland && !use_duckduckgo {
-            app.set_status("Selecione pelo menos um buscador para pesquisar.".into());
-            return;
-        }
-
-        app.set_status("Pesquisando nas fontes selecionadas e carregando miniaturas...".into());
+        app.set_status("Pesquisando imagens no SearXNG e carregando miniaturas...".into());
         app.set_results(slint::ModelRc::from(Rc::new(slint::VecModel::from(
             Vec::<GalleryItem>::new(),
         ))));
 
         let app_handle = app.as_weak();
+        let instance_url = searxng_instance_url.clone();
         runtime_handle.spawn(async move {
-            // Disabled providers are not called. Enabled providers run concurrently.
-            let commons_search = async {
-                if use_commons {
-                    Some(telescop::search::commons::search_images(&query, 30).await)
-                } else {
-                    None
-                }
-            };
-            let openverse_search = async {
-                if use_openverse {
-                    Some(telescop::search::openverse::search_images(&query, 30).await)
-                } else {
-                    None
-                }
-            };
-            let europeana_search = async {
-                if use_europeana {
-                    Some(telescop::search::europeana::search_images(&query, 30).await)
-                } else {
-                    None
-                }
-            };
-            let cleveland_search = async {
-                if use_cleveland {
-                    Some(telescop::search::cleveland::search_images(&query, 30).await)
-                } else {
-                    None
-                }
-            };
-            let duckduckgo_search = async {
-                if use_duckduckgo {
-                    Some(telescop::search::duckduckgo::search_images(&query, 30).await)
-                } else {
-                    None
-                }
-            };
-
-            let (commons, openverse, europeana, cleveland, duckduckgo) = tokio::join!(
-                commons_search,
-                openverse_search,
-                europeana_search,
-                cleveland_search,
-                duckduckgo_search,
-            );
-
             let mut images = Vec::new();
             let mut search_errors = Vec::new();
 
-            for (provider, result) in [
-                ("Wikimedia Commons", commons),
-                ("Openverse", openverse),
-                ("Europeana", europeana),
-                ("Cleveland Museum of Art", cleveland),
-                ("DuckDuckGo", duckduckgo),
-            ] {
-                let Some(result) = result else {
-                    continue;
-                };
-                match result {
-                    Ok(mut found) => images.append(&mut found),
-                    Err(error) => search_errors.push(format!("{provider}: {error}")),
-                }
+            match telescop::search::searxng::search_images(&instance_url, &query, 30).await {
+                Ok(mut found) => images.append(&mut found),
+                Err(error) => search_errors.push(format!("SearXNG: {error}")),
             }
-            let found_count = images.len();
 
+            let found_count = images.len();
             if found_count == 0 && !search_errors.is_empty() {
-                let message = format!(
-                    "Nenhum provedor retornou resultados. {}",
-                    search_errors.join(" | ")
-                );
+                let message = format!("A pesquisa SearXNG falhou. {}", search_errors.join(" | "));
                 let _ = slint::invoke_from_event_loop(move || {
                     if let Some(app) = app_handle.upgrade() {
                         app.set_status(message.into());
@@ -149,7 +92,9 @@ fn main() -> Result<(), slint::PlatformError> {
                     let title = item.title.unwrap_or_else(|| "Imagem sem título".into());
                     let provider = item.provider;
                     let context = format!("{provider}: {title}");
-                    let url = item.thumbnail_url.as_deref()
+                    let url = item
+                        .thumbnail_url
+                        .as_deref()
                         .unwrap_or(&item.image_url)
                         .to_owned();
 
@@ -184,16 +129,16 @@ fn main() -> Result<(), slint::PlatformError> {
                         _ => format!("{original_width} × {original_height}"),
                     };
 
-                    let rights_verified = item.license.as_deref()
+                    let rights_verified = item
+                        .license
+                        .as_deref()
                         .is_some_and(|value| !value.trim().is_empty());
-                    let license = item.license.unwrap_or_else(|| {
-                        if provider == "DuckDuckGo" {
-                            "Licença não verificada".into()
-                        } else {
-                            "Licença não informada".into()
-                        }
-                    });
-                    let credit = item.attribution.or(item.creator)
+                    let license = item
+                        .license
+                        .unwrap_or_else(|| "Licença não verificada".into());
+                    let credit = item
+                        .attribution
+                        .or(item.creator)
                         .filter(|value| !value.trim().is_empty())
                         .unwrap_or_else(|| "Consulte a página de origem".into());
                     let rights = format!("{license} • {credit}");
@@ -250,19 +195,31 @@ fn main() -> Result<(), slint::PlatformError> {
 
                 let gallery_items = cards
                     .into_iter()
-                    .map(|(pixels, width, height, title, provider, dimensions, rights, rights_verified)| {
-                        let buffer = slint::SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(
-                            &pixels, width, height,
-                        );
-                        GalleryItem {
-                            thumbnail: slint::Image::from_rgba8(buffer),
-                            title: title.into(),
-                            provider: provider.into(),
-                            dimensions: dimensions.into(),
-                            rights: rights.into(),
+                    .map(
+                        |(
+                            pixels,
+                            width,
+                            height,
+                            title,
+                            provider,
+                            dimensions,
+                            rights,
                             rights_verified,
-                        }
-                    })
+                        )| {
+                            let buffer =
+                                slint::SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(
+                                    &pixels, width, height,
+                                );
+                            GalleryItem {
+                                thumbnail: slint::Image::from_rgba8(buffer),
+                                title: title.into(),
+                                provider: provider.into(),
+                                dimensions: dimensions.into(),
+                                rights: rights.into(),
+                                rights_verified,
+                            }
+                        },
+                    )
                     .collect::<Vec<_>>();
 
                 let loaded_count = gallery_items.len();
@@ -281,7 +238,7 @@ fn main() -> Result<(), slint::PlatformError> {
                     )
                 };
                 if !search_errors.is_empty() {
-                    status.push_str(" Fontes com falha: ");
+                    status.push_str(" Fonte com falha: ");
                     status.push_str(&search_errors.join(" | "));
                 }
                 app.set_status(status.into());

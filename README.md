@@ -1,65 +1,50 @@
 # Telescop
 
-Aplicativo desktop nativo para pesquisar imagens em diferentes fontes e reunir os resultados em uma galeria própria.
+Aplicativo desktop nativo para pesquisar imagens usando SearXNG e reunir os resultados em uma galeria própria.
 
-> **Status:** em desenvolvimento. A pesquisa integrada consulta Wikimedia Commons, Openverse, Europeana e Cleveland Museum of Art; DuckDuckGo Images está disponível como provedor experimental.
+> **Status:** em desenvolvimento. O SearXNG é o único mecanismo de busca integrado diretamente ao Telescop. O usuário escolhe a instância SearXNG por meio da variável de ambiente `SEARXNG_INSTANCE_URL`.
 
 ## Tecnologias
 
-- **Rust** — lógica da aplicação, integração com provedores e processamento dos resultados.
+- **Rust** — lógica da aplicação, integração de rede e processamento dos resultados.
 - **Slint** — interface gráfica desktop nativa.
 - **Reqwest + Rustls** — requisições HTTP assíncronas com TLS.
 - **Serde** — desserialização das respostas JSON.
-- **MediaWiki API, Openverse API, Europeana Search API e Cleveland Museum of Art Open Access API** — fontes estruturadas de imagens.
-- **DuckDuckGo Images** — pesquisa experimental por página HTML e endpoint interno de resultados JSON; não é uma API pública documentada.
+- **Scraper** — alternativa de leitura da página HTML quando a instância não disponibiliza JSON.
+- **SearXNG Search API** — mecanismo de metabusca para a categoria de imagens.
 
-O projeto não utiliza Tauri, Electron, WebView, HTML, CSS ou TypeScript.
+O projeto não utiliza Tauri, Electron, WebView, HTML, CSS ou TypeScript como camada de interface.
 
 ## Pesquisa e galeria
 
-Os provedores selecionados são consultados simultaneamente. Uma falha em uma fonte não impede a apresentação dos resultados obtidos pelas demais. O download das miniaturas continua limitado a três operações simultâneas.
+O Telescop envia a expressão digitada na barra de pesquisa à categoria `images` da instância SearXNG configurada. A resposta JSON é preferida. Quando a instância desativa esse formato (situação comum em instâncias públicas), o Telescop tenta interpretar a página HTML de resultados.
 
-A galeria apresenta o provedor, as dimensões disponíveis e os dados de licença/atribuição recebidos da fonte.
+Os downloads de miniaturas continuam limitados a três operações simultâneas. A galeria apresenta título, instância/provedor, dimensões e informação de origem quando fornecidos pelo SearXNG.
 
-### Fontes integradas
+### Configurar a instância SearXNG
 
-- **Wikimedia Commons:** API oficial do MediaWiki. O adaptador solicita metadados de direitos e mantém somente arquivos identificados como CC0, Marca de Domínio Público, CC BY, CC BY-SA ou Domínio Público.
-- **Openverse:** API pública com acesso anônimo gratuito e sujeito a limites de requisição. A consulta permite somente CC0, Domínio Público (PDM), CC BY e CC BY-SA; licenças não comerciais, sem derivações ou não identificadas são excluídas.
-- **Europeana:** Search API oficial, filtrada por reusability=open, com verificação adicional para aceitar somente CC0, Marca de Domínio Público, CC BY e CC BY-SA. A chave pessoal de API é gratuita e deve ser configurada por variável de ambiente; não a inclua no código ou em commits. Chaves pessoais são destinadas a uso individual não produtivo. Uma distribuição pública/produção deve solicitar uma chave de projeto conforme as condições oficiais da Europeana.
-- **Cleveland Museum of Art:** API Open Access oficial, sem chave. A consulta usa os filtros cc0=1 e has_image=1, e o adaptador confirma novamente o campo share_license_status antes de aceitar o resultado. O conteúdo selecionado é CC0.
-- **DuckDuckGo Images (experimental):** o Telescop sempre usa o texto atual da barra de pesquisa para montar a URL https://duckduckgo.com/?q=...&iar=images&t=h_. Depois extrai o token VQD dessa página e solicita os resultados JSON ao endpoint interno i.js, usando os parâmetros exigidos pelo fluxo atual de imagens (incluindo idioma e contexto do resultado). A palavra pesquisada não está fixa no código. O endpoint não é uma API pública documentada e pode bloquear requisições (HTTP 403) ou mudar sem aviso. O adaptador também detecta a página de desafio antirobô e trata JSON inesperado ou listas vazias como erro explícito, em vez de convertê-los silenciosamente em uma pesquisa vazia. Como os resultados não fornecem metadados confiáveis de licença, aparecem identificados em amarelo como **Licença não verificada** e não devem ser tratados como liberados para reutilização.
+O Telescop não fixa uma instância pública nem envia suas pesquisas automaticamente a um servidor escolhido pelo projeto. Configure uma instância pública de sua confiança ou uma instância própria.
 
-### Configuração da Europeana (opcional)
-
-1. Crie uma conta gratuita e solicite uma chave pessoal em https://www.europeana.eu/en/apis.
-2. No terminal Fish, configure a variável antes de iniciar o aplicativo:
+No terminal Fish, defina a URL-base da instância antes de iniciar o aplicativo. Informe o endereço principal, sem acrescentar `/search`:
 
 ~~~fish
-set -x EUROPEANA_API_KEY "COLE_SUA_CHAVE_AQUI"
+set -x SEARXNG_INSTANCE_URL "https://sua-instancia.example"
 cargo run
 ~~~
 
-Sem essa variável, Wikimedia Commons, Openverse e Cleveland Museum continuam funcionando; a Europeana informa que está sem chave e não interrompe as outras fontes. O DuckDuckGo também pode ser ativado independentemente, mas está sujeito a bloqueios do próprio serviço.
+A variável também pode apontar para uma instância hospedada em um caminho, por exemplo `https://dominio.example/searxng`. O Telescop acrescenta `/search` automaticamente. URLs com credenciais, parâmetros de consulta ou fragmentos são rejeitadas.
 
-### Política de reutilização
+A instância precisa oferecer a categoria de imagens. O Telescop solicita inicialmente `format=json`; se a resposta for HTTP 403 ou não for JSON válido, tenta a página HTML padrão. Se a instância bloquear ambos os formatos, o aplicativo exibirá o erro retornado.
 
-O Telescop aceita somente:
+### Privacidade
 
-- CC0;
-- Marca de Domínio Público (PDM) ou Domínio Público identificado pela fonte;
-- CC BY;
-- CC BY-SA.
+A pesquisa é enviada ao servidor indicado por `SEARXNG_INSTANCE_URL`. O operador dessa instância pode ter acesso às consultas e aos metadados da requisição. Como o SearXNG é uma metabusca, a instância também encaminha consultas aos mecanismos externos que o administrador habilitou. Escolha um operador em quem confie ou hospede sua própria instância.
 
-São excluídas licenças com restrição não comercial (NC), sem derivações (ND), direitos reservados, ou registros sem identificação confiável de direitos. CC BY e CC BY-SA exigem atribuição e o cumprimento das condições da licença. A existência de uma API gratuita não significa que todo arquivo do provedor seja livre: os direitos são verificados individualmente para cada resultado. A exceção visual é o DuckDuckGo experimental: seus resultados podem aparecer com licença não verificada, sempre sinalizados e sem declaração de permissão de reutilização.
+O Telescop não escolhe nem troca automaticamente de instância, não seleciona servidores públicos aleatórios e não faz fallback silencioso para outro provedor de busca.
 
-## Fontes avaliadas, mas fora da pesquisa padrão
+### Licenças e reutilização
 
-- **Startpage:** adaptador experimental baseado em HTML, sem contrato de API pública estável.
-- **Yandex Images:** API oficial de imagens tarifada; excluída.
-- **Brave Search:** API sujeita a cobrança; excluída.
-- **Bing Images:** API oficial aposentada; não há abertura de navegador como alternativa.
-
-O adaptador experimental do DuckDuckGo é a única exceção e consulta um endpoint interno não documentado. O HTML da página é usado somente para obter o token de sessão; os registros de imagens são recebidos em JSON. Os demais provedores usam as APIs e os serviços descritos acima, sem extração de resultados a partir do HTML de suas páginas.
+Os resultados do SearXNG não oferecem, de maneira uniforme, dados verificáveis de licença para cada imagem. Por isso, o Telescop marca os itens como **Licença não verificada**. A presença de uma imagem na galeria não significa que ela esteja liberada para reutilização, publicação ou uso comercial. Antes de utilizar qualquer arquivo, consulte a página de origem e confirme a licença e as condições de atribuição com o titular dos direitos.
 
 ## Desenvolvimento
 
@@ -67,16 +52,17 @@ Requisitos: Rust toolchain com Cargo e dependências nativas exigidas pelo Slint
 
 ~~~fish
 cargo check
+cargo test
 cargo run
 ~~~
 
 ## Estrutura
 
-- src/ — código Rust.
-- src/search/ — modelo comum e adaptadores de busca.
-- ui/ — interface Slint.
-- docs/ARCHITECTURE.md — arquitetura e etapas planejadas.
-- CHANGELOG.md — histórico de alterações.
+- `src/` — código Rust.
+- `src/search/` — modelo comum e adaptador SearXNG.
+- `ui/` — interface Slint.
+- `docs/ARCHITECTURE.md` — arquitetura e etapas planejadas.
+- `CHANGELOG.md` — histórico de alterações.
 
 ## Licença
 
