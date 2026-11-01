@@ -83,10 +83,13 @@ pub async fn search_images(
             ("profile", "standard"),
         ])
         .send()
-        .await?
-        .error_for_status()?
+        .await
+        .map_err(|error| std::io::Error::other(format!("Falha na requisição da Europeana: {}", error.without_url())))?
+        .error_for_status()
+        .map_err(|error| std::io::Error::other(format!("Resposta HTTP inválida da Europeana: {}", error.without_url())))?
         .json::<SearchResponse>()
-        .await?;
+        .await
+        .map_err(|error| std::io::Error::other(format!("Resposta JSON inválida da Europeana: {}", error.without_url())))?;
 
     if response.success == Some(false) {
         return Err(std::io::Error::other(
