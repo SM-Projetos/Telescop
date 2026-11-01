@@ -168,7 +168,7 @@ fn http_status_error(
         "resposta HTTP inesperada"
     };
     provider_error(format!(
-        "DuckDuckGo: {stage}: HTTP {status}; {detail}"
+        "{stage}: HTTP {status}; {detail}"
     ))
 }
 
