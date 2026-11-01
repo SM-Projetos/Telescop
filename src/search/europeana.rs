@@ -84,12 +84,20 @@ pub async fn search_images(
         ])
         .send()
         .await
-        .map_err(|error| std::io::Error::other(format!("Falha na requisição da Europeana: {}", error.without_url())))?
-        .error_for_status()
-        .map_err(|error| std::io::Error::other(format!("Resposta HTTP inválida da Europeana: {}", error.without_url())))?
+        .map_err(|_| std::io::Error::other("Falha na requisição da API da Europeana"))?;
+
+    if !response.status().is_success() {
+        return Err(std::io::Error::other(format!(
+            "A API da Europeana retornou HTTP {}",
+            response.status()
+        ))
+        .into());
+    }
+
+    let response = response
         .json::<SearchResponse>()
         .await
-        .map_err(|error| std::io::Error::other(format!("Resposta JSON inválida da Europeana: {}", error.without_url())))?;
+        .map_err(|_| std::io::Error::other("A API da Europeana retornou uma resposta JSON inválida"))?;
 
     if response.success == Some(false) {
         return Err(std::io::Error::other(
