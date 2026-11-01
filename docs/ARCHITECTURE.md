@@ -55,7 +55,7 @@ Os modos Normal, Anônimo, Tor e Proxy ainda não estão implementados funcional
 ## Etapas
 
 1. Fundação Rust + Slint e identidade visual.
-2. Adaptadores Wikimedia Commons, Openverse, Europeana e Cleveland Museum of Art.
+2. Adaptadores Wikimedia Commons, Openverse, Europeana e Cleveland Museum of Art; integração experimental do DuckDuckGo.
 3. Modelo comum com metadados de direitos e atribuição.
 4. Galeria, deduplicação, filtros e carregamento progressivo.
 5. Fontes adicionais e recursos de privacidade.

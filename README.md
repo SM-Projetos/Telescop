@@ -59,7 +59,7 @@ São excluídas licenças com restrição não comercial (NC), sem derivações 
 - **Brave Search:** API sujeita a cobrança; excluída.
 - **Bing Images:** API oficial aposentada; não há abertura de navegador como alternativa.
 
-Não são usados scraping de páginas de resultados nem mecanismos que exijam assinatura, créditos pagos ou chave com cobrança.
+O adaptador experimental do DuckDuckGo é a única exceção e consulta um endpoint interno não documentado. O HTML da página é usado somente para obter o token de sessão; os registros de imagens são recebidos em JSON. Os demais provedores usam as APIs e os serviços descritos acima, sem extração de resultados a partir do HTML de suas páginas.
 
 ## Desenvolvimento
 

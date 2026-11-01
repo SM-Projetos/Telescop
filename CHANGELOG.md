@@ -12,7 +12,6 @@
 - First native desktop interface draft.
 - Normalized image result model.
 - Initial architecture documentation.
-- Experimental DuckDuckGo Images adapter using a session VQD token and JSON endpoint.
 - Experimental Startpage Images adapter parsing the image-search HTML page.
 - Wikimedia Commons search adapter using the documented MediaWiki API.
 - Openverse image search with an explicit CC0, PDM, CC BY and CC BY-SA allow-list.
@@ -21,7 +20,7 @@
 - Visual gallery with downloaded thumbnails, title, provider, dimensions and displayed rights/attribution.
 - Concurrent thumbnail downloads, limited to three requests at a time.
 - Search status with counts and details for provider, download or decoding failures.
-- Unit tests for reusable-license filtering in Openverse, Europeana, Wikimedia Commons and Cleveland Museum of Art.
+- Unit tests for reusable-license filtering in Openverse, Europeana, Wikimedia Commons and Cleveland Museum of Art, plus DuckDuckGo URL construction and VQD token extraction.
 
 ### Changed
 - Invoke only the image providers selected by the user; enabled providers continue to run concurrently.
@@ -32,7 +31,7 @@
 - Wikimedia Commons results now require explicit reusable-rights metadata; non-commercial, no-derivatives and unknown licenses are excluded.
 - Extended ImageResult with creator, license, license URL and attribution metadata.
 - Display license and attribution alongside each gallery result.
-- Updated README and architecture documentation for the four-provider search flow and the free-only reuse policy.
+- Updated README and architecture documentation for the five-source search flow and the distinction between verified and unverified image rights.
 
 ### Notes
 - Openverse supports free anonymous API access but applies request and pagination limits.
