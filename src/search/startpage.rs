@@ -42,6 +42,10 @@ fn parse_results(html: &str, limit: u8) -> Vec<ImageResult> {
             provider: "Startpage".into(),
             width: None,
             height: None,
+            creator: None,
+            license: None,
+            license_url: None,
+            attribution: None,
         });
         if results.len() >= limit.clamp(1, 50) as usize { break; }
     }
