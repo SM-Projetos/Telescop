@@ -28,6 +28,7 @@
 - Search the five selected providers concurrently, including the experimental DuckDuckGo adapter.
 - Keep DuckDuckGo image results visible without treating unknown rights as a reusable license.
 - Correct DuckDuckGo image request parameters to match the current image-search request flow, while forwarding the exact current search-field text to both requests.
+- Detect DuckDuckGo anti-bot challenge pages and reject empty or unexpected JSON responses instead of silently reporting zero results.
 - Keep provider failures independent so results from successful providers can still be displayed.
 - Wikimedia Commons results now require explicit reusable-rights metadata; non-commercial, no-derivatives and unknown licenses are excluded.
 - Extended ImageResult with creator, license, license URL and attribution metadata.

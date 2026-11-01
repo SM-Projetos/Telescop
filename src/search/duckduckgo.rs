@@ -12,13 +12,13 @@ const MAX_QUERY_CHARS: usize = 499;
 
 #[derive(Debug, Deserialize)]
 struct Response {
-    #[serde(default)]
+    // Do not default this field: a changed/challenge response must not be
+    // silently reported as a successful search with zero results.
     results: Vec<Item>,
 }
 
 #[derive(Debug, Deserialize)]
 struct Item {
-    #[serde(default)]
     image: String,
     thumbnail: Option<String>,
     title: Option<String>,
@@ -41,19 +41,24 @@ pub async fn search_images(
         )));
     }
 
-    // Keep the same User-Agent for both requests: DuckDuckGo binds VQD
-    // validation tokens to the search query and the HTTP client identity.
+    // The VQD value is associated with the exact query and User-Agent.
+    // Keep one stable User-Agent for both requests.
     let client = reqwest::Client::builder()
         .user_agent(USER_AGENT)
         .timeout(Duration::from_secs(25))
         .build()?;
 
-    // This URL always uses the current text from the Telescop search field:
-    // https://duckduckgo.com/?q=<query>&iar=images&t=h_
+    // Build the same URL pattern used by the user's browser:
+    // https://duckduckgo.com/?q=<current search text>&iar=images&t=h_
     let page_response = client
         .get(build_page_url(query))
         .header(reqwest::header::ACCEPT, "text/html,application/xhtml+xml,*/*;q=0.8")
         .header(reqwest::header::ACCEPT_LANGUAGE, "pt-BR,pt;q=0.9,en;q=0.8")
+        .header(reqwest::header::REFERER, PAGE_URL)
+        .header("sec-fetch-dest", "document")
+        .header("sec-fetch-mode", "navigate")
+        .header("sec-fetch-site", "same-origin")
+        .header("sec-fetch-user", "?1")
         .send()
         .await
         .map_err(|error| {
@@ -70,8 +75,15 @@ pub async fn search_images(
         .await
         .map_err(|error| provider_error(format!("falha ao ler a página de imagens: {error}")))?;
 
-    // Match the VQD field used by DuckDuckGo's current image-search page.
-    // Do not accept an arbitrary occurrence of "vqd=" elsewhere in the HTML.
+    if is_challenge_page(&html) {
+        return Err(provider_error(
+            "o DuckDuckGo apresentou um desafio antirobô. A página não contém resultados utilizáveis; verifique se a busca funciona no navegador normal antes de tentar novamente pelo Telescop"
+                .to_owned(),
+        ));
+    }
+
+    // Use the VQD belonging to this exact query. An empty/missing token must
+    // stop the search rather than send a request that may cause IP blocking.
     let token = extract_vqd(&html).ok_or_else(|| {
         provider_error(
             "o DuckDuckGo não forneceu o token VQD da pesquisa atual; a página pode ter mudado ou bloqueado a requisição"
@@ -79,13 +91,16 @@ pub async fn search_images(
         )
     })?;
 
-    // The image page uses a JSON endpoint. Its parameters mirror the current
-    // DuckDuckGo image-search request flow used by SearXNG's maintained code.
+    // DuckDuckGo's image endpoint is undocumented. These parameters follow
+    // the current SearXNG implementation of the image-search request.
     let image_response = client
         .get(build_image_url(query, &token))
         .header(reqwest::header::ACCEPT, "*/*")
         .header(reqwest::header::REFERER, PAGE_URL)
         .header(reqwest::header::COOKIE, "ad=pt_BR; ah=br-pt; l=br-pt")
+        .header("sec-fetch-dest", "empty")
+        .header("sec-fetch-mode", "cors")
+        .header("sec-fetch-site", "same-origin")
         .send()
         .await
         .map_err(|error| {
@@ -102,14 +117,13 @@ pub async fn search_images(
 
     let response = image_response.json::<Response>().await.map_err(|error| {
         provider_error(format!(
-            "o DuckDuckGo retornou uma resposta de imagens inválida: {error}"
+            "resposta inesperada do DuckDuckGo: não foi possível interpretar o JSON de imagens ({error})"
         ))
     })?;
 
-    Ok(response
-        .results
+    let results = validate_results(response.results)?;
+    Ok(results
         .into_iter()
-        .filter(|item| !item.image.trim().is_empty())
         .take(limit.clamp(1, 50) as usize)
         .map(|item| ImageResult {
             image_url: item.image,
@@ -152,6 +166,33 @@ fn build_image_url(query: &str, token: &str) -> reqwest::Url {
     url
 }
 
+fn is_challenge_page(html: &str) -> bool {
+    html.contains("id=\"challenge-form\"")
+        || html.contains("id='challenge-form'")
+        || html.contains("anomaly-modal")
+}
+
+fn validate_results(
+    mut results: Vec<Item>,
+) -> Result<Vec<Item>, Box<dyn Error + Send + Sync>> {
+    if results.is_empty() {
+        return Err(provider_error(
+            "o DuckDuckGo respondeu com uma lista JSON vazia. Isso pode indicar ausência de resultados ou limitação temporária do serviço"
+                .to_owned(),
+        ));
+    }
+
+    let received_count = results.len();
+    results.retain(|item| !item.image.trim().is_empty());
+    if results.is_empty() {
+        return Err(provider_error(format!(
+            "o DuckDuckGo retornou {received_count} registro(s), mas nenhum contém uma URL de imagem utilizável"
+        )));
+    }
+
+    Ok(results)
+}
+
 fn provider_error(message: String) -> Box<dyn Error + Send + Sync> {
     Box::new(io::Error::new(io::ErrorKind::Other, message))
 }
@@ -167,20 +208,20 @@ fn http_status_error(
     } else {
         "resposta HTTP inesperada"
     };
-    provider_error(format!(
-        "{stage}: HTTP {status}; {detail}"
-    ))
+    provider_error(format!("{stage}: HTTP {status}; {detail}"))
 }
 
 fn extract_vqd(html: &str) -> Option<String> {
-    let (_, tail) = html.split_once("vqd=\"")?;
+    let (_, tail) = html.split_once("vqd=\\"")?;
     let (value, _) = tail.split_once('"')?;
     (!value.trim().is_empty()).then(|| value.to_owned())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{build_image_url, build_page_url, extract_vqd};
+    use super::{
+        build_image_url, build_page_url, extract_vqd, is_challenge_page, validate_results, Item,
+    };
 
     #[test]
     fn builds_the_requested_url_from_each_search_term() {
@@ -230,5 +271,41 @@ mod tests {
     fn rejects_missing_or_empty_vqd_values() {
         assert_eq!(extract_vqd("<html>sem token</html>"), None);
         assert_eq!(extract_vqd(r#"vqd="";"#), None);
+    }
+
+    #[test]
+    fn detects_the_duckduckgo_robot_challenge() {
+        assert!(is_challenge_page(r#"<form id="challenge-form"></form>"#));
+        assert!(is_challenge_page("<div class='anomaly-modal'></div>"));
+        assert!(!is_challenge_page("<html><body>Image results</body></html>"));
+    }
+
+    #[test]
+    fn rejects_empty_or_unusable_image_result_lists() {
+        assert!(validate_results(Vec::new()).is_err());
+
+        let unusable = Item {
+            image: "  ".into(),
+            thumbnail: None,
+            title: None,
+            url: None,
+            width: None,
+            height: None,
+        };
+        assert!(validate_results(vec![unusable]).is_err());
+    }
+
+    #[test]
+    fn preserves_image_results_with_urls() {
+        let usable = Item {
+            image: "https://example.test/image.jpg".into(),
+            thumbnail: Some("https://example.test/thumb.jpg".into()),
+            title: Some("Example".into()),
+            url: Some("https://example.test".into()),
+            width: Some(640),
+            height: Some(480),
+        };
+        let results = validate_results(vec![usable]).expect("resultado deveria ser válido");
+        assert_eq!(results.len(), 1);
     }
 }

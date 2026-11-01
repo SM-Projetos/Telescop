@@ -60,3 +60,8 @@ Os modos Normal, Anônimo, Tor e Proxy ainda não estão implementados funcional
 4. Galeria, deduplicação, filtros e carregamento progressivo.
 5. Fontes adicionais e recursos de privacidade.
 6. Testes, documentação e empacotamento.
+
+
+## DuckDuckGo: validação de resposta
+
+O adaptador verifica se a página HTML contém um desafio antirobô antes de extrair o token VQD. O JSON do endpoint de imagens precisa conter o campo `results`; listas vazias ou registros sem URL de imagem são reportados como falha diagnóstica, não como uma pesquisa concluída com sucesso. O fluxo usa a expressão atual da barra de pesquisa tanto na URL da página quanto na requisição JSON.
